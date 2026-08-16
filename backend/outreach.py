@@ -78,3 +78,16 @@ class OutreachWebhookEngine:
             confidence_score=conf_pct,
             audio_voice_note_simulated_url=voice_url
         )
+
+    @staticmethod
+    def generate_twiml_response(from_number: str, message_body: str) -> str:
+        """Generates standard Twilio TwiML XML response for live WhatsApp messages."""
+        req = OutreachWebhookRequest(from_number=from_number, message_body=message_body, channel="whatsapp")
+        res = OutreachWebhookEngine.process_incoming(req)
+        # Escape XML special characters
+        body = res.whatsapp_formatted_body.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+        return f"""<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+    <Message>{body}</Message>
+</Response>"""
+

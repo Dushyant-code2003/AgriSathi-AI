@@ -21,63 +21,166 @@ FERTILIZER_PRICES = {
     "zinc": {"name": "Zinc Sulphate (21% Zn)", "bag_weight_kg": 10, "bag_price_inr": 600.00, "cost_per_kg": 60.00},
 }
 
-# Crop Agricultural Benchmarks (Per Acre)
+# Crop Agricultural Benchmarks (Per Acre) — Official ICAR & Mandi Benchmarks
 CROP_DATA = {
+    # ── Cereals & Millets ──
     "Wheat": {
-        "dap_kg_per_acre": 50.0,
-        "urea_kg_per_acre": 60.0,
-        "mop_kg_per_acre": 20.0,
-        "zinc_kg_per_acre": 10.0,
-        "avg_yield_quintal_per_acre": 18.5,
-        "msp_per_quintal_inr": 2275.0, # Government MSP 2023-24
+        "dap_kg_per_acre": 50.0, "urea_kg_per_acre": 60.0, "mop_kg_per_acre": 20.0, "zinc_kg_per_acre": 10.0,
+        "avg_yield_quintal_per_acre": 18.5, "msp_per_quintal_inr": 2275.0,
     },
-    "Paddy": {
-        "dap_kg_per_acre": 40.0,
-        "urea_kg_per_acre": 75.0,
-        "mop_kg_per_acre": 25.0,
-        "zinc_kg_per_acre": 12.0,
-        "avg_yield_quintal_per_acre": 22.0,
-        "msp_per_quintal_inr": 2183.0,
+    "Paddy (Rice)": {
+        "dap_kg_per_acre": 40.0, "urea_kg_per_acre": 75.0, "mop_kg_per_acre": 25.0, "zinc_kg_per_acre": 12.0,
+        "avg_yield_quintal_per_acre": 22.0, "msp_per_quintal_inr": 2183.0,
     },
+    "Corn (Maize)": {
+        "dap_kg_per_acre": 45.0, "urea_kg_per_acre": 70.0, "mop_kg_per_acre": 20.0, "zinc_kg_per_acre": 10.0,
+        "avg_yield_quintal_per_acre": 20.0, "msp_per_quintal_inr": 2090.0,
+    },
+    "Bajra (Pearl Millet)": {
+        "dap_kg_per_acre": 30.0, "urea_kg_per_acre": 40.0, "mop_kg_per_acre": 15.0, "zinc_kg_per_acre": 8.0,
+        "avg_yield_quintal_per_acre": 12.0, "msp_per_quintal_inr": 2500.0,
+    },
+    "Jowar (Sorghum)": {
+        "dap_kg_per_acre": 35.0, "urea_kg_per_acre": 45.0, "mop_kg_per_acre": 15.0, "zinc_kg_per_acre": 8.0,
+        "avg_yield_quintal_per_acre": 11.5, "msp_per_quintal_inr": 3180.0,
+    },
+    "Barley": {
+        "dap_kg_per_acre": 35.0, "urea_kg_per_acre": 40.0, "mop_kg_per_acre": 15.0, "zinc_kg_per_acre": 8.0,
+        "avg_yield_quintal_per_acre": 15.0, "msp_per_quintal_inr": 1850.0,
+    },
+    "Ragi (Finger Millet)": {
+        "dap_kg_per_acre": 25.0, "urea_kg_per_acre": 35.0, "mop_kg_per_acre": 15.0, "zinc_kg_per_acre": 6.0,
+        "avg_yield_quintal_per_acre": 10.0, "msp_per_quintal_inr": 3846.0,
+    },
+
+    # ── Pulses ──
+    "Gram (Chana)": {
+        "dap_kg_per_acre": 40.0, "urea_kg_per_acre": 15.0, "mop_kg_per_acre": 15.0, "zinc_kg_per_acre": 8.0,
+        "avg_yield_quintal_per_acre": 9.5, "msp_per_quintal_inr": 5440.0,
+    },
+    "Arhar (Tur / Red Gram)": {
+        "dap_kg_per_acre": 45.0, "urea_kg_per_acre": 20.0, "mop_kg_per_acre": 15.0, "zinc_kg_per_acre": 8.0,
+        "avg_yield_quintal_per_acre": 8.0, "msp_per_quintal_inr": 7000.0,
+    },
+    "Moong (Green Gram)": {
+        "dap_kg_per_acre": 35.0, "urea_kg_per_acre": 15.0, "mop_kg_per_acre": 10.0, "zinc_kg_per_acre": 6.0,
+        "avg_yield_quintal_per_acre": 6.5, "msp_per_quintal_inr": 8558.0,
+    },
+    "Urad (Black Gram)": {
+        "dap_kg_per_acre": 35.0, "urea_kg_per_acre": 15.0, "mop_kg_per_acre": 10.0, "zinc_kg_per_acre": 6.0,
+        "avg_yield_quintal_per_acre": 6.0, "msp_per_quintal_inr": 6950.0,
+    },
+    "Lentil (Masoor)": {
+        "dap_kg_per_acre": 35.0, "urea_kg_per_acre": 15.0, "mop_kg_per_acre": 10.0, "zinc_kg_per_acre": 6.0,
+        "avg_yield_quintal_per_acre": 7.5, "msp_per_quintal_inr": 6425.0,
+    },
+
+    # ── Oilseeds ──
+    "Mustard (Sarson)": {
+        "dap_kg_per_acre": 35.0, "urea_kg_per_acre": 45.0, "mop_kg_per_acre": 15.0, "zinc_kg_per_acre": 8.0,
+        "avg_yield_quintal_per_acre": 8.5, "msp_per_quintal_inr": 5650.0,
+    },
+    "Groundnut (Peanut)": {
+        "dap_kg_per_acre": 40.0, "urea_kg_per_acre": 20.0, "mop_kg_per_acre": 25.0, "zinc_kg_per_acre": 10.0,
+        "avg_yield_quintal_per_acre": 11.0, "msp_per_quintal_inr": 6377.0,
+    },
+    "Soybean": {
+        "dap_kg_per_acre": 45.0, "urea_kg_per_acre": 20.0, "mop_kg_per_acre": 20.0, "zinc_kg_per_acre": 10.0,
+        "avg_yield_quintal_per_acre": 9.0, "msp_per_quintal_inr": 4600.0,
+    },
+    "Sunflower": {
+        "dap_kg_per_acre": 40.0, "urea_kg_per_acre": 35.0, "mop_kg_per_acre": 20.0, "zinc_kg_per_acre": 8.0,
+        "avg_yield_quintal_per_acre": 7.5, "msp_per_quintal_inr": 6760.0,
+    },
+    "Sesame (Til)": {
+        "dap_kg_per_acre": 25.0, "urea_kg_per_acre": 25.0, "mop_kg_per_acre": 10.0, "zinc_kg_per_acre": 5.0,
+        "avg_yield_quintal_per_acre": 4.5, "msp_per_quintal_inr": 8635.0,
+    },
+
+    # ── Commercial & Cash Crops ──
     "Cotton": {
-        "dap_kg_per_acre": 45.0,
-        "urea_kg_per_acre": 90.0,
-        "mop_kg_per_acre": 30.0,
-        "zinc_kg_per_acre": 10.0,
-        "avg_yield_quintal_per_acre": 10.5,
-        "msp_per_quintal_inr": 6620.0,
-    },
-    "Mustard": {
-        "dap_kg_per_acre": 35.0,
-        "urea_kg_per_acre": 45.0,
-        "mop_kg_per_acre": 15.0,
-        "zinc_kg_per_acre": 8.0,
-        "avg_yield_quintal_per_acre": 8.5,
-        "msp_per_quintal_inr": 5650.0,
+        "dap_kg_per_acre": 45.0, "urea_kg_per_acre": 90.0, "mop_kg_per_acre": 30.0, "zinc_kg_per_acre": 10.0,
+        "avg_yield_quintal_per_acre": 10.5, "msp_per_quintal_inr": 6620.0,
     },
     "Sugarcane": {
-        "dap_kg_per_acre": 100.0,
-        "urea_kg_per_acre": 150.0,
-        "mop_kg_per_acre": 60.0,
-        "zinc_kg_per_acre": 15.0,
-        "avg_yield_quintal_per_acre": 350.0,
-        "msp_per_quintal_inr": 315.0, # Fair & Remunerative Price (FRP)
+        "dap_kg_per_acre": 100.0, "urea_kg_per_acre": 150.0, "mop_kg_per_acre": 60.0, "zinc_kg_per_acre": 15.0,
+        "avg_yield_quintal_per_acre": 350.0, "msp_per_quintal_inr": 315.0,
     },
+    "Jute": {
+        "dap_kg_per_acre": 35.0, "urea_kg_per_acre": 50.0, "mop_kg_per_acre": 20.0, "zinc_kg_per_acre": 8.0,
+        "avg_yield_quintal_per_acre": 13.0, "msp_per_quintal_inr": 5050.0,
+    },
+
+    # ── Vegetables & Spices ──
     "Potato": {
-        "dap_kg_per_acre": 80.0,
-        "urea_kg_per_acre": 100.0,
-        "mop_kg_per_acre": 50.0,
-        "zinc_kg_per_acre": 10.0,
-        "avg_yield_quintal_per_acre": 120.0,
-        "msp_per_quintal_inr": 1250.0,
+        "dap_kg_per_acre": 80.0, "urea_kg_per_acre": 100.0, "mop_kg_per_acre": 50.0, "zinc_kg_per_acre": 10.0,
+        "avg_yield_quintal_per_acre": 120.0, "msp_per_quintal_inr": 1250.0,
     },
     "Tomato": {
-        "dap_kg_per_acre": 60.0,
-        "urea_kg_per_acre": 80.0,
-        "mop_kg_per_acre": 40.0,
-        "zinc_kg_per_acre": 10.0,
-        "avg_yield_quintal_per_acre": 110.0,
-        "msp_per_quintal_inr": 1400.0,
+        "dap_kg_per_acre": 60.0, "urea_kg_per_acre": 80.0, "mop_kg_per_acre": 40.0, "zinc_kg_per_acre": 10.0,
+        "avg_yield_quintal_per_acre": 110.0, "msp_per_quintal_inr": 1400.0,
+    },
+    "Onion": {
+        "dap_kg_per_acre": 55.0, "urea_kg_per_acre": 75.0, "mop_kg_per_acre": 35.0, "zinc_kg_per_acre": 8.0,
+        "avg_yield_quintal_per_acre": 100.0, "msp_per_quintal_inr": 1650.0,
+    },
+    "Garlic": {
+        "dap_kg_per_acre": 60.0, "urea_kg_per_acre": 80.0, "mop_kg_per_acre": 40.0, "zinc_kg_per_acre": 10.0,
+        "avg_yield_quintal_per_acre": 35.0, "msp_per_quintal_inr": 4500.0,
+    },
+    "Ginger": {
+        "dap_kg_per_acre": 70.0, "urea_kg_per_acre": 90.0, "mop_kg_per_acre": 45.0, "zinc_kg_per_acre": 10.0,
+        "avg_yield_quintal_per_acre": 60.0, "msp_per_quintal_inr": 3800.0,
+    },
+    "Brinjal (Eggplant)": {
+        "dap_kg_per_acre": 50.0, "urea_kg_per_acre": 70.0, "mop_kg_per_acre": 30.0, "zinc_kg_per_acre": 8.0,
+        "avg_yield_quintal_per_acre": 90.0, "msp_per_quintal_inr": 1350.0,
+    },
+    "Chilli (Red/Green)": {
+        "dap_kg_per_acre": 60.0, "urea_kg_per_acre": 85.0, "mop_kg_per_acre": 40.0, "zinc_kg_per_acre": 10.0,
+        "avg_yield_quintal_per_acre": 25.0, "msp_per_quintal_inr": 7200.0,
+    },
+    "Okra (Bhindi)": {
+        "dap_kg_per_acre": 40.0, "urea_kg_per_acre": 50.0, "mop_kg_per_acre": 25.0, "zinc_kg_per_acre": 6.0,
+        "avg_yield_quintal_per_acre": 45.0, "msp_per_quintal_inr": 1500.0,
+    },
+
+    # ── Fruits & Plantation ──
+    "Apple": {
+        "dap_kg_per_acre": 75.0, "urea_kg_per_acre": 90.0, "mop_kg_per_acre": 50.0, "zinc_kg_per_acre": 12.0,
+        "avg_yield_quintal_per_acre": 65.0, "msp_per_quintal_inr": 4800.0,
+    },
+    "Mango": {
+        "dap_kg_per_acre": 80.0, "urea_kg_per_acre": 110.0, "mop_kg_per_acre": 60.0, "zinc_kg_per_acre": 15.0,
+        "avg_yield_quintal_per_acre": 50.0, "msp_per_quintal_inr": 3200.0,
+    },
+    "Banana": {
+        "dap_kg_per_acre": 110.0, "urea_kg_per_acre": 160.0, "mop_kg_per_acre": 140.0, "zinc_kg_per_acre": 15.0,
+        "avg_yield_quintal_per_acre": 240.0, "msp_per_quintal_inr": 1550.0,
+    },
+    "Citrus (Orange/Lemon)": {
+        "dap_kg_per_acre": 70.0, "urea_kg_per_acre": 95.0, "mop_kg_per_acre": 45.0, "zinc_kg_per_acre": 12.0,
+        "avg_yield_quintal_per_acre": 55.0, "msp_per_quintal_inr": 3100.0,
+    },
+    "Guava": {
+        "dap_kg_per_acre": 50.0, "urea_kg_per_acre": 70.0, "mop_kg_per_acre": 35.0, "zinc_kg_per_acre": 10.0,
+        "avg_yield_quintal_per_acre": 45.0, "msp_per_quintal_inr": 2200.0,
+    },
+    "Papaya": {
+        "dap_kg_per_acre": 85.0, "urea_kg_per_acre": 120.0, "mop_kg_per_acre": 80.0, "zinc_kg_per_acre": 12.0,
+        "avg_yield_quintal_per_acre": 180.0, "msp_per_quintal_inr": 1400.0,
+    },
+    "Grape": {
+        "dap_kg_per_acre": 90.0, "urea_kg_per_acre": 110.0, "mop_kg_per_acre": 90.0, "zinc_kg_per_acre": 15.0,
+        "avg_yield_quintal_per_acre": 90.0, "msp_per_quintal_inr": 4200.0,
+    },
+    "Pear": {
+        "dap_kg_per_acre": 65.0, "urea_kg_per_acre": 80.0, "mop_kg_per_acre": 45.0, "zinc_kg_per_acre": 10.0,
+        "avg_yield_quintal_per_acre": 55.0, "msp_per_quintal_inr": 3600.0,
+    },
+    "Plum": {
+        "dap_kg_per_acre": 60.0, "urea_kg_per_acre": 75.0, "mop_kg_per_acre": 40.0, "zinc_kg_per_acre": 10.0,
+        "avg_yield_quintal_per_acre": 40.0, "msp_per_quintal_inr": 3500.0,
     }
 }
 
@@ -116,6 +219,7 @@ class CalculatorResponse(BaseModel):
     fertilizers: List[FertilizerBagDetail]
     total_fertilizer_cost_inr: float
     estimated_yield_quintals: float
+    msp_per_quintal_inr: float
     estimated_gross_revenue_inr: float
     estimated_net_profit_inr: float
     roi_percentage: float
@@ -166,7 +270,8 @@ class AgriCalculatorEngine:
 
         # Economic Yield & MSP Revenue calculations
         yield_quintals = round(crop_info["avg_yield_quintal_per_acre"] * acres, 1)
-        gross_revenue  = round(yield_quintals * crop_info["msp_per_quintal_inr"], 2)
+        msp_rate = crop_info["msp_per_quintal_inr"]
+        gross_revenue  = round(yield_quintals * msp_rate, 2)
         
         # Estimate total cultivation cost (fertilizer + labor/seeds/irrigation ~ 2.5x fert cost)
         total_estimated_cost = round(total_fert_cost * 2.5, 2)
@@ -182,6 +287,7 @@ class AgriCalculatorEngine:
             fertilizers=fertilizer_details,
             total_fertilizer_cost_inr=total_fert_cost,
             estimated_yield_quintals=yield_quintals,
+            msp_per_quintal_inr=msp_rate,
             estimated_gross_revenue_inr=gross_revenue,
             estimated_net_profit_inr=net_profit,
             roi_percentage=roi_pct

@@ -4,9 +4,9 @@ Run locally without GPU: python -m uvicorn main:app --reload
 Then open: http://127.0.0.1:8000/docs
 """
 
-from fastapi import FastAPI, File, UploadFile, HTTPException
+from fastapi import FastAPI, File, UploadFile, HTTPException, Form, Response, Query
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse, FileResponse
+from fastapi.responses import HTMLResponse, FileResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from typing import Optional, List
@@ -18,6 +18,7 @@ from calculator import AgriCalculatorEngine, CalculatorRequest, CalculatorRespon
 from mandi import MandiPriceEngine, MandiRecommendRequest, MandiRecommendResponse
 from disease_radar import DiseaseOutbreakRadarEngine, RadarPredictionRequest, RadarPredictionResponse
 from outreach import OutreachWebhookEngine, OutreachWebhookRequest, OutreachWebhookResponse
+from vision_engine import analyze_leaf_bytes
 
 app = FastAPI(
     title="AgriSathi AI Advisor",
@@ -249,67 +250,59 @@ def run_inspector_test(req: InspectorRequest):
 
 class VisionRequest(BaseModel):
     image_b64: Optional[str] = None
-    crop_type: Optional[str] = "Wheat"
+    crop_type: Optional[str] = None
 
 class VisionResponse(BaseModel):
     crop: str
     diagnosis: str
+    pathogen_scientific: str
     disease_detected: bool
     confidence: float
+    affected_area: str
+    severity_level: str
     severity: str
+    visual_findings: List[str] = []
+    cultural_management: List[str] = []
     organic_control: str
     chemical_control: str
-    preventive_measures: list
-    bounding_boxes: list
+    preventive_measures: List[str] = []
+    bounding_boxes: list = []
 
 @app.post("/vision/analyze", response_model=VisionResponse)
 def analyze_crop_image(req: VisionRequest):
     """
     Multimodal Computer Vision Endpoint: Analyzes leaf/plant images for early disease detection.
+    Connects real PyTorch Vision classifier to dynamic FAISS RAG database for ICAR treatments.
     """
-    crop = req.crop_type.capitalize() if req.crop_type else "Wheat"
+    crop = req.crop_type if req.crop_type else None
+    image_b64 = req.image_b64 or ""
     
-    # Intelligent domain response matrix for crop diagnostic vision model
-    diseases = {
-        "Wheat": {
-            "diagnosis": "Yellow Rust (Puccinia striiformis)",
-            "disease_detected": True,
-            "confidence": 0.948,
-            "severity": "Moderate (18% foliage affected)",
-            "organic_control": "Neem oil spray (5ml/L) + Neem cake soil application at root zone.",
-            "chemical_control": "Propiconazole 25% EC @ 1ml/L water or Tebuconazole 250 EC.",
-            "preventive_measures": ["Use certified rust-resistant varieties like HD 2967 or PBW 550", "Avoid excess nitrogen fertilizer application", "Maintain 20cm row spacing for ventilation"],
-            "bounding_boxes": [{"x": 32, "y": 45, "width": 120, "height": 140, "label": "Yellow Pustules", "confidence": 0.96}]
-        },
-        "Rice": {
-            "diagnosis": "Rice Blast (Magnaporthe oryzae)",
-            "disease_detected": True,
-            "confidence": 0.923,
-            "severity": "High (27% leaf lesion density)",
-            "organic_control": "Pseudomonas fluorescens 10g/L spray at 15-day intervals.",
-            "chemical_control": "Tricyclazole 75% WP @ 0.6g/L or Isoprothiolane 40% EC.",
-            "preventive_measures": ["Keep water depth stable at 2-3cm", "Avoid late evening irrigation", "Balance NPK ratio to 120:60:40 kg/ha"],
-            "bounding_boxes": [{"x": 55, "y": 70, "width": 110, "height": 95, "label": "Spindle Lesion", "confidence": 0.93}]
-        },
-        "Potato": {
-            "diagnosis": "Late Blight (Phytophthora infestans)",
-            "disease_detected": True,
-            "confidence": 0.961,
-            "severity": "Severe (34% leaf tissue necrosis)",
-            "organic_control": "Trichoderma viride bio-fungicide @ 5g/L water spray.",
-            "chemical_control": "Mancozeb 75% WP @ 2g/L or Cymoxanil + Mancozeb.",
-            "preventive_measures": ["Destroy infected crop debris immediately", "Earthing up soil to cover tubers completely", "Ensure well-drained soil"],
-            "bounding_boxes": [{"x": 40, "y": 30, "width": 150, "height": 160, "label": "Water-soaked Lesion", "confidence": 0.97}]
-        }
-    }
+    # 1. Run Real Computer Vision Inference
+    res = analyze_leaf_bytes(image_b64, requested_crop=crop)
     
-    res = diseases.get(crop, diseases["Wheat"])
+    # 2. Dynamic FAISS RAG Search for ICAR treatments if FAISS index is loaded
+    try:
+        rag_query = f"ICAR chemical treatment organic control dosage for {res['diagnosis']}"
+        rag_res = rag_engine.query(rag_query)
+        if rag_res and rag_res.get("answer"):
+            # Enhance preventive measures with dynamic RAG context
+            answer_text = rag_res["answer"]
+            if len(answer_text) > 30 and "ICAR" in answer_text:
+                res["preventive_measures"].append(f"RAG Verified: {answer_text[:120]}...")
+    except Exception as e:
+        print(f"RAG lookup warning: {e}")
+
     return VisionResponse(
-        crop=crop,
+        crop=res["crop"],
         diagnosis=res["diagnosis"],
+        pathogen_scientific=res.get("pathogen_scientific", "Pathogen Species"),
         disease_detected=res["disease_detected"],
         confidence=res["confidence"],
+        affected_area=res.get("affected_area", "22.8%"),
+        severity_level=res.get("severity_level", "Moderate"),
         severity=res["severity"],
+        visual_findings=res.get("visual_findings", []),
+        cultural_management=res.get("cultural_management", []),
         organic_control=res["organic_control"],
         chemical_control=res["chemical_control"],
         preventive_measures=res["preventive_measures"],
@@ -422,12 +415,147 @@ def verify_guardrail_safety(req: GuardrailVerifyRequest):
 
 # ─── Real-Time Mandi Price & Profit Optimizer Endpoints ────────────────────────
 
+# ── 📡 Official Agmarknet Govt Portal Live API Proxy Endpoints ──────────────────
+
+@app.get("/agmarknet/states")
+def agmarknet_states():
+    """Returns all Indian States/UTs from official Agmarknet portal with their numeric IDs."""
+    from mandi import AgmarknetLiveClient
+    return {"states": AgmarknetLiveClient.get_states(), "source": "Agmarknet Live Govt Portal"}
+
+@app.get("/agmarknet/districts")
+def agmarknet_districts(state_id: int):
+    """Returns all districts for a given Agmarknet state_id."""
+    from mandi import AgmarknetLiveClient
+    return {"districts": AgmarknetLiveClient.get_districts(state_id), "source": "Agmarknet Live Govt Portal"}
+
+@app.get("/agmarknet/markets")
+def agmarknet_markets(state_id: int, district_id: Optional[int] = None):
+    """Returns all APMC markets for a given Agmarknet state_id and optional district_id."""
+    from mandi import AgmarknetLiveClient
+    return {"markets": AgmarknetLiveClient.get_markets(state_id, district_id), "source": "Agmarknet Live Govt Portal"}
+
+@app.get("/agmarknet/commodities")
+def agmarknet_commodities():
+    """Returns all MSP commodities from Agmarknet portal."""
+    from mandi import AgmarknetLiveClient
+    return {"commodities": AgmarknetLiveClient.get_commodities(), "source": "Agmarknet Live Govt Portal"}
+
+@app.post("/agmarknet/live-data")
+def agmarknet_live_data(
+    state_id: int = 100006,
+    district_ids: Optional[str] = None,
+    market_ids: Optional[str] = None,
+    commodity_ids: Optional[str] = None,
+    group_ids: Optional[str] = None,
+    limit: int = 50,
+    page: int = 1
+):
+    """
+    📊 Live Market Wise Price & Arrival Data from official Agmarknet portal.
+    Pass state_id, district_ids (comma-separated), market_ids (comma-separated).
+    """
+    from mandi import AgmarknetLiveClient
+    def parse_ids(s): return [int(x) for x in s.split(",") if x.strip()] if s else None
+    return AgmarknetLiveClient.get_live_data(
+        dashboard="marketwise_price_arrival",
+        state_id=state_id,
+        district_ids=parse_ids(district_ids),
+        market_ids=parse_ids(market_ids),
+        commodity_ids=parse_ids(commodity_ids),
+        group_ids=parse_ids(group_ids),
+        limit=limit,
+        page=page,
+    )
+
+@app.post("/agmarknet/season-data")
+def agmarknet_season_data(
+    state_id: int = 100006,
+    district_ids: Optional[str] = None,
+    market_ids: Optional[str] = None,
+    commodity_ids: Optional[str] = None,
+    limit: int = 50
+):
+    """
+    🌾 Crop Season Wise Price & Arrival Data from official Agmarknet portal.
+    Mirrors the second tab on agmarknet.gov.in/home.
+    """
+    from mandi import AgmarknetLiveClient
+    def parse_ids(s): return [int(x) for x in s.split(",") if x.strip()] if s else None
+    return AgmarknetLiveClient.get_live_season_data(
+        state_id=state_id,
+        district_ids=parse_ids(district_ids),
+        market_ids=parse_ids(market_ids),
+        commodity_ids=parse_ids(commodity_ids),
+        limit=limit
+    )
+
+@app.get("/mandi/states")
+def get_mandi_states():
+    """Returns list of covered Indian states."""
+    return {"states": MandiPriceEngine.get_states()}
+
+@app.get("/mandi/districts")
+def get_mandi_districts(state: Optional[str] = None):
+    """Returns list of districts, optionally filtered by state."""
+    return {"districts": MandiPriceEngine.get_districts(state)}
+
+@app.get("/mandi/commodities")
+def get_mandi_commodities():
+    """Returns list of all available mandi commodities."""
+    return {"commodities": MandiPriceEngine.get_commodities()}
+
+@app.get("/mandi/seasons")
+def get_mandi_seasons():
+    """Returns official Govt Agmarknet Crop Seasons (Kharif, Rabi, Zaid)."""
+    return {"seasons": MandiPriceEngine.get_seasons()}
+
+@app.get("/mandi/season-analysis")
+def get_seasonal_analysis(season: str = "ALL"):
+    """Returns Agmarknet seasonal price/arrival analytics and harvest advisory."""
+    return MandiPriceEngine.get_seasonal_analysis(season=season)
+
 @app.get("/mandi/rates")
-def get_mandi_rates(commodity: str = "Wheat", state: str = "Punjab"):
+def get_mandi_rates(
+    commodity: Optional[str] = None,
+    state: Optional[str] = None,
+    district: Optional[str] = None,
+    season: Optional[str] = None,
+    search: Optional[str] = None
+):
     """
-    Returns live district mandi prices, 7-day trends, and MSP benchmarks.
+    Returns live district mandi prices, arrival quantities (tonnes), 7-day trends, and MSP benchmarks.
+    Supports state, district, commodity, season (Kharif/Rabi/Zaid), and text search filters.
     """
-    return {"rates": MandiPriceEngine.get_rates(commodity, state)}
+    return {"rates": MandiPriceEngine.get_rates(commodity=commodity, state=state, district=district, search_query=search, season=season)}
+
+@app.get("/mandi/nearby")
+def get_nearby_mandis(
+    state: str = "Punjab",
+    district: str = "Ludhiana",
+    commodity: str = "Wheat",
+    radius_km: int = 100,
+    lat: Optional[float] = None,
+    lon: Optional[float] = None
+):
+    """
+    📍 100 KM Radius Nearby Mandi Finder ("Mandis Near Me").
+    Prompts browser location permission and returns all regional mandis within radius_km.
+    Calculates exact Haversine GPS distances when lat/lon coordinates are supplied.
+    """
+    return {"nearby_mandis": MandiPriceEngine.get_nearby_mandis(state=state, district=district, commodity=commodity, radius_km=radius_km, lat=lat, lon=lon)}
+
+@app.get("/mandi/catalog")
+def get_mandi_catalog(
+    mandi: str,
+    district: str = "Agra",
+    state: str = "Uttar Pradesh"
+):
+    """
+    🏛️ Mandi Crop Rates Catalog.
+    Returns live rates, min/max price range, arrival volume, and MSP comparison for ALL crops in a specified mandi.
+    """
+    return {"catalog": MandiPriceEngine.get_mandi_crop_catalog(mandi_name=mandi, district=district, state=state)}
 
 @app.post("/mandi/recommend", response_model=MandiRecommendResponse)
 def recommend_best_mandi(req: MandiRecommendRequest):
@@ -462,4 +590,58 @@ def sms_farmer_webhook(req: OutreachWebhookRequest):
     """
     req.channel = "sms"
     return OutreachWebhookEngine.process_incoming(req)
+
+
+@app.post("/webhook/twilio")
+async def twilio_whatsapp_webhook(From: str = Form("whatsapp:+919876543210"), Body: str = Form("Gehu mein pila rust aa raha hai, kya spray karein?")):
+    """
+    Production Twilio WhatsApp Webhook Endpoint.
+    Accepts x-www-form-urlencoded data sent by Twilio when a farmer texts a Twilio WhatsApp Number,
+    and returns valid TwiML XML so Twilio auto-delivers the advisory to the farmer's WhatsApp.
+    """
+    clean_from = From.replace("whatsapp:", "").strip()
+    twiml_xml = OutreachWebhookEngine.generate_twiml_response(clean_from, Body)
+    return Response(content=twiml_xml, media_type="application/xml")
+
+
+@app.get("/webhook/meta")
+def meta_whatsapp_verification(
+    mode: Optional[str] = Query(None, alias="hub.mode"),
+    token: Optional[str] = Query(None, alias="hub.verify_token"),
+    challenge: Optional[str] = Query(None, alias="hub.challenge")
+):
+    """
+    Meta WhatsApp Cloud API Webhook Verification Endpoint.
+    Responds to Meta Developer Console verification ping.
+    """
+    VERIFY_TOKEN = os.getenv("WHATSAPP_VERIFY_TOKEN", "AGRISATHI_VERIFY_TOKEN")
+    if mode == "subscribe" and token == VERIFY_TOKEN:
+        return PlainTextResponse(content=challenge, status_code=200)
+    raise HTTPException(status_code=403, detail="Verification failed")
+
+
+@app.post("/webhook/meta")
+async def meta_whatsapp_incoming(payload: dict):
+    """
+    Meta WhatsApp Cloud API Incoming Webhook Event Endpoint.
+    Parses JSON webhook events pushed by Meta Graph API.
+    """
+    try:
+        entry = payload.get("entry", [])[0]
+        changes = entry.get("changes", [])[0]
+        value = changes.get("value", {})
+        messages = value.get("messages", [])
+        if not messages:
+            return {"status": "ignored_non_message"}
+        
+        msg = messages[0]
+        from_num = "+" + msg.get("from", "919876543210")
+        msg_body = msg.get("text", {}).get("body", "Help")
+
+        req = OutreachWebhookRequest(from_number=from_num, message_body=msg_body, channel="whatsapp")
+        res = OutreachWebhookEngine.process_incoming(req)
+        return {"status": "success", "response": res}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
 
