@@ -3306,8 +3306,19 @@
     </div>`;
       msgs.scrollTop = msgs.scrollHeight;
 
+      async function getApiBase() {
+        const customUrl = localStorage.getItem('AGRISATHI_BACKEND_URL');
+        if (customUrl) return customUrl.replace(/\/$/, '');
+        try {
+          const check = await fetch('/health', { method: 'GET', signal: AbortSignal.timeout(1500) });
+          if (check.ok) return '';
+        } catch (e) { }
+        return 'https://agrisathi-backend.onrender.com';
+      }
+
       try {
-        const res = await fetch('/query', {
+        const apiBase = await getApiBase();
+        const res = await fetch(`${apiBase}/query`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ question: query, model, mode: model, use_rag: true })
