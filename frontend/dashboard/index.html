@@ -3309,11 +3309,7 @@
       function getApiBase() {
         const customUrl = localStorage.getItem('AGRISATHI_BACKEND_URL');
         if (customUrl) return customUrl.replace(/\/$/, '');
-        const host = window.location.hostname;
-        if (host === 'localhost' || host === '127.0.0.1') {
-          return 'http://localhost:8000';
-        }
-        return 'https://agrisathi-backend.onrender.com';
+        return '';
       }
 
       try {

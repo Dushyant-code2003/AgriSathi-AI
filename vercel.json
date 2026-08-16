@@ -24,7 +24,7 @@
       "dest": "/api/index.py"
     },
     {
-      "src": "/(calculator|agmarknet|webhook|ingest|docs|openapi.json|rag|vision|radar)(.*)",
+      "src": "/(query|health|metrics|calculator|agmarknet|webhook|ingest|docs|openapi.json|rag|vision|radar|inspector)(.*)",
       "dest": "/api/index.py"
     },
     {
