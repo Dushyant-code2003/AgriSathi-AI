@@ -16,7 +16,20 @@ from typing import List, Dict, Any
 
 DOCUMENTS_DIR = os.path.join(os.path.dirname(__file__), "../data/documents")
 EMBEDDINGS_DIR = os.path.join(os.path.dirname(__file__), "../data/embeddings")
-OUTPUT_VECTOR_STORE = os.path.join(EMBEDDINGS_DIR, "faiss_vector_store.json")
+
+def get_vector_store_path():
+    candidates = [
+        os.path.join(os.path.dirname(__file__), "faiss_vector_store.json"),
+        os.path.join(os.path.dirname(__file__), "../data/embeddings/faiss_vector_store.json"),
+        os.path.join(os.getcwd(), "backend/faiss_vector_store.json"),
+        os.path.join(os.getcwd(), "data/embeddings/faiss_vector_store.json"),
+    ]
+    for c in candidates:
+        if os.path.exists(c):
+            return c
+    return candidates[0]
+
+OUTPUT_VECTOR_STORE = get_vector_store_path()
 
 CHUNK_SIZE = 500
 CHUNK_OVERLAP = 50
