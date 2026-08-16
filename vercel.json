@@ -12,6 +12,10 @@
   ],
   "routes": [
     {
+      "src": "/logo.svg",
+      "dest": "/frontend/dashboard/logo.svg"
+    },
+    {
       "src": "/dashboard/(.*)",
       "dest": "/frontend/dashboard/$1"
     },
