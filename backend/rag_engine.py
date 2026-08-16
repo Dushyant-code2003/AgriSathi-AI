@@ -98,20 +98,41 @@ class AgriSathiRAGEngine:
         """
         q_lower = query.lower()
         
-        # Dynamic official portal query handling
-        if "seed" in q_lower or "beej" in q_lower:
+        # Dynamic official portal query handling for crop health, pests, diseases & fertilizers
+        if any(w in q_lower for w in ["pila", "pili", "yellow", "rust", "rataua", "gehu", "wheat"]):
+            return {
+                "title": "ICAR-IIWBR Wheat Yellow Rust & Chlorosis Treatment Protocol",
+                "text": (
+                    "🌾 *Gehu (Wheat) Pila Hone Ka Karat Aur Upchar (ICAR Guidelines)*:\n\n"
+                    "1️⃣ *Yellow Rust (Pila Rataua)* — Agar patti par peeli dhariyan/dhool jaisi dikhe:\n"
+                    "   • *Chemical Spray*: Propiconazole 25% EC (Tilt/Bumper) @ 200 ml per acre in 200L water.\n"
+                    "   • *Alternative*: Tebuconazole 25.9% EC @ 200 ml per acre.\n\n"
+                    "2️⃣ *Nitrogen / Nutrients Deficiency* — Agar patti niche se peeli pad rahi ho:\n"
+                    "   • *Foliar Spray*: 2% Urea Solution (4 kg Urea in 200L water per acre).\n"
+                    "   • *Micronutrient*: Zinc Sulphate (21%) @ 1 kg per acre.\n\n"
+                    "⚠️ *Precaution*: Paani jyada rukne se bhi jad sadi sakti hai, khet se extra paani nikalein."
+                ),
+                "source": "ICAR-IIWBR Karnal Official Wheat Advisory",
+                "url": "https://iiwbr.icar.gov.in"
+            }
+        elif any(w in q_lower for w in ["pesticide", "keet", "illi", "spray", "dawa", "kida"]):
+            return {
+                "title": "CIBRC Approved Crop Protection & Insecticide Protocol",
+                "text": (
+                    "🐛 *Crop Pest & Insect Control Advisory*:\n\n"
+                    "1. *Illi / Caterpillar*: Chlorantraniliprole 18.5% SC (Coragen) @ 60 ml/acre ya Emamectin Benzoate 5% SG @ 80g/acre.\n"
+                    "2. *Sucking Pests (Aphid/Jassid)*: Imidacloprid 17.8% SL @ 50 ml/acre ya Thiamethoxam 25% WG @ 80g/acre.\n"
+                    "3. *Bio-Control*: Neem Oil (1500 ppm) @ 5 ml/Litre water."
+                ),
+                "source": "Official Portal: cibrc.gov.in",
+                "url": "https://cibrc.gov.in"
+            }
+        elif "seed" in q_lower or "beej" in q_lower:
             return {
                 "title": "National Seeds Corporation (NSC) Certified Seeds Portal",
                 "text": "Certified beej (seeds) ke liye National Seeds Corporation (indiaseeds.com) ya nearest Krishi Vigyan Kendra par contact karein. Subsidy par certified gehu, dhan, aur dal beej upalabdha hain.",
                 "source": "Official Portal: indiaseeds.com",
                 "url": "https://indiaseeds.com"
-            }
-        elif "pesticide" in q_lower or "keet" in q_lower or "spray" in q_lower:
-            return {
-                "title": "Central Insecticides Board & Registration Committee (CIBRC)",
-                "text": "CIBRC dwara pramanit insecticides hi use karein. Neem oil (1500 ppm) @ 5ml/litre ya bio-control agents jaise Trichoderma aur Pseudomonas fluorescens sabse surakshit hain.",
-                "source": "Official Portal: cibrc.gov.in",
-                "url": "https://cibrc.gov.in"
             }
         else:
             return {
@@ -120,6 +141,7 @@ class AgriSathiRAGEngine:
                 "source": "Official Govt Portal: kisansuvidha.gov.in",
                 "url": "https://kisansuvidha.gov.in"
             }
+
 
     def _synthesize_with_llm(self, question: str, retrieved_texts: List[str], sources: List[str], mode: str = "hybrid") -> str:
         """
