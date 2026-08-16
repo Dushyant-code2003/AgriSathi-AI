@@ -10,7 +10,8 @@ from fastapi.responses import HTMLResponse, FileResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from typing import Optional, List
-import time, random, os
+import time, random, os, sys
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from ingest_documents import DocumentIngestionPipeline, DOCUMENTS_DIR
 from rag_engine import rag_engine
