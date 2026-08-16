@@ -169,7 +169,8 @@ class AgriSathiRAGEngine:
             try:
                 headers = {
                     "Authorization": f"Bearer {groq_key}",
-                    "Content-Type": "application/json"
+                    "Content-Type": "application/json",
+                    "User-Agent": "AgriSathiAI/2.0"
                 }
                 system_instruction = (
                     "Aap AgriSathi AI ho — ek highly specialized, expert, authoritative aur empathetic Indian agricultural advisor.\n"
