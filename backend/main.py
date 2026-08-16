@@ -624,7 +624,7 @@ def meta_whatsapp_verification(
 async def meta_whatsapp_incoming(payload: dict):
     """
     Meta WhatsApp Cloud API Incoming Webhook Event Endpoint.
-    Parses JSON webhook events pushed by Meta Graph API.
+    Parses JSON webhook events pushed by Meta Graph API and sends back AI farming advisory response.
     """
     try:
         entry = payload.get("entry", [])[0]
@@ -635,13 +635,42 @@ async def meta_whatsapp_incoming(payload: dict):
             return {"status": "ignored_non_message"}
         
         msg = messages[0]
-        from_num = "+" + msg.get("from", "919876543210")
+        from_num = msg.get("from", "919876543210")
+        if not from_num.startswith("+"):
+            from_num = "+" + from_num
+            
         msg_body = msg.get("text", {}).get("body", "Help")
 
         req = OutreachWebhookRequest(from_number=from_num, message_body=msg_body, channel="whatsapp")
         res = OutreachWebhookEngine.process_incoming(req)
+
+        # Automatically send reply back to farmer via Meta Cloud API if Token and Phone Number ID are present
+        phone_number_id = value.get("metadata", {}).get("phone_number_id")
+        meta_token = os.getenv("META_WHATSAPP_TOKEN") or os.getenv("WHATSAPP_ACCESS_TOKEN")
+
+        if phone_number_id and meta_token:
+            import requests as _req
+            send_headers = {
+                "Authorization": f"Bearer {meta_token}",
+                "Content-Type": "application/json"
+            }
+            send_data = {
+                "messaging_product": "whatsapp",
+                "recipient_type": "individual",
+                "to": msg.get("from"),
+                "type": "text",
+                "text": {"preview_url": False, "body": res.whatsapp_formatted_body}
+            }
+            _req.post(
+                f"https://graph.facebook.com/v20.0/{phone_number_id}/messages",
+                headers=send_headers,
+                json=send_data,
+                timeout=10
+            )
+
         return {"status": "success", "response": res}
     except Exception as e:
         return {"status": "error", "message": str(e)}
+
 
 
