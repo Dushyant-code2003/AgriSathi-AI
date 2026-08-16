@@ -2479,9 +2479,16 @@
               <label
                 style="font-size:0.72rem; font-weight:700; color:var(--text-accent); display:block; margin-bottom:4px; text-transform:uppercase; letter-spacing:0.5px;">Search
                 Mandi / Location</label>
-              <input type="text" id="agmkSearchInput" class="inp" placeholder="Type Mandi, Town or Crop..."
+              <input type="text" id="agmkSearchInput" class="inp" placeholder="Type Mandi (e.g. Nimbahera)..."
                 oninput="onAgmkSearchInput(this.value)"
                 style="width:100%; font-size:0.83rem; padding:6px 10px; background:var(--bg-glass-card);" />
+            </div>
+            <div style="display:flex; align-items:flex-end;">
+              <button class="btn btn-em" onclick="loadAgmarknetData(1)"
+                style="width:100%; padding:8px 16px; font-size:0.85rem; font-weight:700; height:36px; display:flex; align-items:center; justify-content:center; gap:6px;">
+                ⚡ Go / Sync Mandi Data
+              </button>
+
             </div>
           </div>
 
@@ -2491,10 +2498,7 @@
             <div style="display:flex; align-items:center; gap:10px;">
               <span style="font-size:1.2rem;">📍</span>
               <div>
-                <strong style="color:var(--emerald); font-size:0.95rem;">Nearby Mandi Radius Finder ("Mandis Near
-                  Me")</strong>
-                <div style="font-size:0.8rem; color:var(--text-accent);">Find all local APMC markets &amp; sub-yards
-                  within your desired distance.</div>
+                <strong style="color:var(--emerald); font-size:0.95rem;">Nearby Mandi Radius Finder</strong>
               </div>
             </div>
             <div style="display:flex; align-items:center; gap:10px;">
@@ -2507,13 +2511,9 @@
                 <option value="150">150 km</option>
                 <option value="200">200 km</option>
               </select>
-              <button class="btn btn-sk" style="padding:7px 16px; font-size:0.85rem; font-weight:700;"
+              <button class="btn btn-sk" style="padding:7px 18px; font-size:0.85rem; font-weight:700;"
                 onclick="requestAgmarknetLocationAndFind()">
                 📍 Allow Location &amp; Find Mandis Under <span id="radiusLabel">100</span> KM
-              </button>
-              <button onclick="loadAgmarknetData()" class="btn btn-em"
-                style="padding:7px 22px; font-size:0.88rem; font-weight:700;">
-                ⚡ Go / Sync
               </button>
             </div>
           </div>
@@ -3873,18 +3873,22 @@ Sawaal: ${q} [/INST]`;
         });
       }
 
-      // Search query filter
+      // Search query filter (matches Mandi Name, City, District, State, Commodity Name, Group)
       if (_agmkSearchQuery) {
         records = records.filter(r => {
           const cmdt = (r.cmdt_name || '').toLowerCase();
           const grp = (r.cmdt_grp_name || '').toLowerCase();
-          return cmdt.includes(_agmkSearchQuery) || grp.includes(_agmkSearchQuery);
+          const mkt = (r.mkt_name || r.market_name || '').toLowerCase();
+          const dist = (r.dist_name || r.district_name || '').toLowerCase();
+          const state = (r.state_name || '').toLowerCase();
+          return mkt.includes(_agmkSearchQuery) || dist.includes(_agmkSearchQuery) || state.includes(_agmkSearchQuery) || cmdt.includes(_agmkSearchQuery) || grp.includes(_agmkSearchQuery);
         });
       }
 
       // Attach distances
       records.forEach(r => {
-        r.distance_km = getMarketDistance(r.cmdt_name, document.getElementById('agmkDistrictSelect')?.options[document.getElementById('agmkDistrictSelect').selectedIndex]?.text);
+        const mktName = r.mkt_name || r.market_name || '';
+        r.distance_km = getMarketDistance(mktName, document.getElementById('agmkDistrictSelect')?.options[document.getElementById('agmkDistrictSelect').selectedIndex]?.text);
       });
 
       // Filter by radius if location active
@@ -3928,10 +3932,20 @@ Sawaal: ${q} [/INST]`;
           ? `<span style="background:rgba(16,185,129,0.15); color:var(--emerald); padding:3px 8px; border-radius:6px; font-weight:700; font-size:0.75rem;">🟢 ${r.distance_km} km</span>`
           : `<span class="text-2" style="font-size:0.75rem;">–</span>`;
 
-        return `<tr>
+        const mandiName = r.mkt_name || r.market_name || 'Nimbahera';
+        const distName = r.dist_name || r.district_name || 'Chittorgarh';
+        const stateName = r.state_name || 'Rajasthan';
+
+        return `<tr style="cursor:pointer;" onclick="openMandiCatalogModal('${mandiName.replace(/'/g, "\\'")}', '${distName.replace(/'/g, "\\'")}', '${stateName.replace(/'/g, "\\'")}')" title="Click to view all crops bought & sold in ${mandiName}">
           <td>
-            <strong>${r.cmdt_name || '–'}</strong>
-            ${r.cmdt_grp_name ? `<br/><small style="color:var(--text-accent); font-size:0.72rem;">${r.cmdt_grp_name}</small>` : ''}
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span style="font-size:1.1rem;">🏛️</span>
+              <div>
+                <strong style="color:var(--emerald); font-size:0.92rem;">${mandiName} Mandi</strong>
+                <div style="font-size:0.78rem; font-weight:700; color:var(--text-1);">${r.cmdt_name || '–'}</div>
+                ${r.cmdt_grp_name ? `<small style="color:var(--text-accent); font-size:0.7rem;">${r.cmdt_grp_name}</small>` : ''}
+              </div>
+            </div>
           </td>
           <td style="color:var(--text-2); font-size:0.83rem;">${mspPrice}</td>
           <td>${priceCell}</td>
@@ -3941,6 +3955,7 @@ Sawaal: ${q} [/INST]`;
           <td>${distBadge}</td>
         </tr>`;
       }).join('');
+
     }
 
     function renderAgmarknetPagination(pagination) {
