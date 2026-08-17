@@ -45,7 +45,7 @@ def extract_text_from_file(file_path: str) -> str:
             
     elif ext == ".pdf":
         text = ""
-        # Try PyPDF2 / pypdf if available
+        # Try standard pypdf text extraction
         try:
             from pypdf import PdfReader
             reader = PdfReader(file_path)
@@ -53,35 +53,46 @@ def extract_text_from_file(file_path: str) -> str:
                 page_text = page.extract_text()
                 if page_text:
                     text += page_text + "\n"
-            if text.strip():
-                return text.strip()
-        except ImportError:
-            pass
-
-        try:
-            import PyPDF2
-            reader = PyPDF2.PdfReader(file_path)
-            for page in reader.pages:
-                page_text = page.extract_text()
-                if page_text:
-                    text += page_text + "\n"
-            if text.strip():
-                return text.strip()
         except Exception:
             pass
 
-        # Fallback stream text extraction for PDFs
-        with open(file_path, "rb") as f:
-            content = f.read()
-            # Extract plain text elements from pdf stream
-            text_blocks = re.findall(b"\\(([^()]{3,})\\)", content)
-            decoded_blocks = []
-            for b in text_blocks:
-                try:
-                    decoded_blocks.append(b.decode("utf-8", errors="ignore"))
-                except Exception:
-                    pass
-            return " ".join(decoded_blocks).strip()
+        if not text.strip():
+            try:
+                import PyPDF2
+                reader = PyPDF2.PdfReader(file_path)
+                for page in reader.pages:
+                    page_text = page.extract_text()
+                    if page_text:
+                        text += page_text + "\n"
+            except Exception:
+                pass
+
+        # If standard PDF text extraction returned minimal content (< 100 chars), perform OCR on scanned PDF pages
+        if len(text.strip()) < 100:
+            print(f"[PDF INGEST] Performing high-precision OCR on scanned PDF: {file_path}")
+            try:
+                import pypdfium2 as pdfium
+                import numpy as np
+                from rapidocr_onnxruntime import RapidOCR
+                
+                ocr_engine = RapidOCR()
+                pdf = pdfium.PdfDocument(file_path)
+                ocr_text = []
+
+                for page_idx in range(len(pdf)):
+                    img = np.array(pdf[page_idx].render(scale=1.5).to_pil())
+                    result, _ = ocr_engine(img)
+                    if result:
+                        page_str = " ".join([res[1] for res in result if res[1]])
+                        if page_str.strip():
+                            ocr_text.append(page_str)
+                
+                if ocr_text:
+                    return "\n\n".join(ocr_text).strip()
+            except Exception as e:
+                print(f"[PDF OCR ERROR] {e}")
+
+        return text.strip()
 
     return ""
 
@@ -146,7 +157,17 @@ class DocumentIngestionPipeline:
             doc_files.extend(glob.glob(os.path.join(self.docs_dir, pattern)))
 
         if not doc_files:
-            print(f"[WARNING] No raw document files found in {self.docs_dir}")
+            print(f"[WARNING] No raw document files found in {self.docs_dir}. Flushing vector store...")
+            vector_store_payload = {
+                "ingest_timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
+                "total_files": 0,
+                "total_chunks": 0,
+                "chunk_size": CHUNK_SIZE,
+                "chunk_overlap": CHUNK_OVERLAP,
+                "chunks": []
+            }
+            with open(OUTPUT_VECTOR_STORE, "w", encoding="utf-8") as f:
+                json.dump(vector_store_payload, f, indent=2, ensure_ascii=False)
             return []
 
         print(f"[INGEST] Found {len(doc_files)} raw document files.")

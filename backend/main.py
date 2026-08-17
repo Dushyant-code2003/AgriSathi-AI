@@ -190,6 +190,33 @@ def query_agrisathi(req: QueryRequest):
         guardrail_report=res.get("guardrail_report")
     )
 
+@app.post("/vectorstore/flush")
+def flush_vector_store():
+    """
+    Flushes and wipes the RAG vector store and in-memory index completely.
+    Useful when uploading fresh documents or starting a new RAG pipeline.
+    """
+    rag_engine.flush_vector_store()
+    return {
+        "status": "success",
+        "message": "Vector store completely flushed. In-memory RAG pipeline reset to empty state.",
+        "total_chunks": 0
+    }
+
+@app.post("/ingest/rebuild")
+def rebuild_ingestion():
+    """
+    Re-runs the document ingestion pipeline over data/documents/ and reloads RAG vector index.
+    """
+    pipeline = DocumentIngestionPipeline()
+    chunks = pipeline.ingest()
+    rag_engine.reload_vector_store()
+    return {
+        "status": "success",
+        "message": f"Successfully re-ingested repository. Loaded {len(chunks)} chunks.",
+        "total_chunks": len(chunks)
+    }
+
 @app.get("/metrics")
 def get_metrics():
     """Evaluation metrics for all 3 model variants."""
@@ -283,13 +310,18 @@ def analyze_crop_image(req: VisionRequest):
     
     # 2. Dynamic FAISS RAG Search for ICAR treatments if FAISS index is loaded
     try:
-        rag_query = f"ICAR chemical treatment organic control dosage for {res['diagnosis']}"
-        rag_res = rag_engine.query(rag_query)
-        if rag_res and rag_res.get("answer"):
-            # Enhance preventive measures with dynamic RAG context
-            answer_text = rag_res["answer"]
-            if len(answer_text) > 30 and "ICAR" in answer_text:
-                res["preventive_measures"].append(f"RAG Verified: {answer_text[:120]}...")
+        if rag_engine and len(rag_engine.chunks) > 0:
+            rag_query = f"ICAR chemical treatment organic control dosage for {res['diagnosis']}"
+            retrieved = rag_engine.retrieve(rag_query, top_k=3)
+            if retrieved:
+                top_chunk, score = retrieved[0]
+                text = top_chunk.get("text", "")
+                source = top_chunk.get("file_name") or top_chunk.get("title") or "Ingested Document"
+                if len(text) > 20:
+                    res["preventive_measures"].append(f"📚 RAG Document Verified ({source}): {text[:140]}...")
+                    res["chemical_control"] += f" (Verified from document: {source})"
+        else:
+            res["preventive_measures"].append("⚠️ RAG Pipeline Flushed (0 documents). Upload ICAR/CIBRC PDFs in Document Ingestion to load grounded treatment documents.")
     except Exception as e:
         print(f"RAG lookup warning: {e}")
 

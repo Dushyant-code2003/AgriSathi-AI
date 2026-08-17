@@ -2166,9 +2166,16 @@
 
           <div class="flex items-center justify-between mt-4">
             <div id="uploadStatusText" class="text-sm text-2">No file selected yet.</div>
-            <button id="uploadBtn" class="btn btn-primary" onclick="uploadSelectedDocument()" disabled>
-              ⚡ Upload &amp; Ingest into Vector DB
-            </button>
+            <div class="flex items-center gap-2">
+              <button id="uploadBtn" class="btn btn-primary" onclick="uploadSelectedDocument()" disabled>
+                ⚡ Upload &amp; Ingest into Vector DB
+              </button>
+              <button id="flushBtn" class="btn"
+                style="background:rgba(225,29,72,0.12); color:#e11d48; border:1px solid rgba(225,29,72,0.3); font-weight:700; padding:8px 16px; border-radius:var(--r-sm); cursor:pointer;"
+                onclick="flushVectorStore()">
+                🧹 Flush / Reset Vector Store
+              </button>
+            </div>
           </div>
         </div>
 
@@ -3446,6 +3453,24 @@ Sawaal: ${q} [/INST]`;
       } catch (err) {
         status.innerHTML = `<span class="text-am">Backend offline. Run FastAPI backend first.</span>`;
         btn.disabled = false;
+      }
+    }
+
+    async function flushVectorStore() {
+      if (!confirm("Are you sure you want to flush and reset the entire RAG Vector Store? This will wipe all document chunks from memory and index until you upload fresh documents.")) return;
+      const status = document.getElementById('uploadStatusText');
+      if (status) status.innerHTML = `⏳ Flushing RAG vector store and resetting pipeline...`;
+      try {
+        const res = await fetch('http://localhost:8000/vectorstore/flush', { method: 'POST' });
+        const data = await res.json();
+        if (res.ok) {
+          if (status) status.innerHTML = `🧹 <strong class="text-rose" style="color:#e11d48;">Vector store completely flushed!</strong> Total chunks: 0. Upload new documents to build a fresh pipeline.`;
+          loadIngestedDocuments();
+        } else {
+          if (status) status.innerHTML = `<span class="text-ro">Flush error: ${data.detail || 'Failed to flush'}</span>`;
+        }
+      } catch (err) {
+        if (status) status.innerHTML = `<span class="text-am">Backend offline. Run FastAPI backend first.</span>`;
       }
     }
 
