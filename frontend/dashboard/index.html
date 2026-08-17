@@ -3316,7 +3316,10 @@
       function getApiBase() {
         const customUrl = localStorage.getItem('AGRISATHI_BACKEND_URL');
         if (customUrl) return customUrl.replace(/\/$/, '');
-        return '';
+        if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+          return 'http://localhost:8000';
+        }
+        return 'https://agrisathi-ai-3tc0.onrender.com';
       }
 
       try {
@@ -3388,7 +3391,7 @@
       const prompt = document.getElementById('inspectorPromptCode');
 
       try {
-        const res = await fetch('http://localhost:8000/inspector/test', {
+        const res = await fetch(`${getApiBase()}/inspector/test`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ query: q, top_k: 3 })
@@ -3439,7 +3442,7 @@ Sawaal: ${q} [/INST]`;
       fd.append('file', selectedUploadFile);
 
       try {
-        const res = await fetch('http://localhost:8000/documents/upload', { method: 'POST', body: fd });
+        const res = await fetch(`${getApiBase()}/documents/upload`, { method: 'POST', body: fd });
         const data = await res.json();
         if (res.ok) {
           status.innerHTML = `✅ <strong class="text-em">${data.file_name}</strong> ingested! Added <strong>${data.chunks_added} chunks</strong>. Total: ${data.total_system_chunks} chunks.`;
@@ -3461,7 +3464,7 @@ Sawaal: ${q} [/INST]`;
       const status = document.getElementById('uploadStatusText');
       if (status) status.innerHTML = `⏳ Flushing RAG vector store and resetting pipeline...`;
       try {
-        const res = await fetch('http://localhost:8000/vectorstore/flush', { method: 'POST' });
+        const res = await fetch(`${getApiBase()}/vectorstore/flush`, { method: 'POST' });
         const data = await res.json();
         if (res.ok) {
           if (status) status.innerHTML = `🧹 <strong class="text-rose" style="color:#e11d48;">Vector store completely flushed!</strong> Total chunks: 0. Upload new documents to build a fresh pipeline.`;
@@ -3478,7 +3481,7 @@ Sawaal: ${q} [/INST]`;
       const tbody = document.getElementById('ingestedDocsTable');
       if (!tbody) return;
       try {
-        const res = await fetch('http://localhost:8000/documents/list');
+        const res = await fetch(`${getApiBase()}/documents/list`);
         const data = await res.json();
         if (data.documents?.length) {
           tbody.innerHTML = data.documents.map((d, i) => `
@@ -3516,7 +3519,7 @@ Sawaal: ${q} [/INST]`;
       const soil = document.getElementById('calcSoil').value;
 
       try {
-        const res = await fetch('http://localhost:8000/calculator/calculate', {
+        const res = await fetch(`${getApiBase()}/calculator/calculate`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ land_size: landSize, unit, crop, soil_type: soil })
@@ -3617,7 +3620,7 @@ Sawaal: ${q} [/INST]`;
     async function initAgmarknetDropdowns() {
       document.getElementById('agmarknetDate').textContent = `• Data as on ${new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}`;
       try {
-        const res = await fetch('http://localhost:8000/agmarknet/states');
+        const res = await fetch(`${getApiBase()}/agmarknet/states`);
         const data = await res.json();
         const sel = document.getElementById('agmkStateSelect');
         sel.innerHTML = '<option value="">All States/UTs</option>' +
@@ -3626,7 +3629,7 @@ Sawaal: ${q} [/INST]`;
 
       // Load commodities
       try {
-        const res2 = await fetch('http://localhost:8000/agmarknet/commodities');
+        const res2 = await fetch(`${getApiBase()}/agmarknet/commodities`);
         const data2 = await res2.json();
         const sel2 = document.getElementById('agmkCommoditySelect');
         sel2.innerHTML = '<option value="100001">All Commodities</option>' +
@@ -3650,7 +3653,7 @@ Sawaal: ${q} [/INST]`;
 
       if (!stateId) return;
       try {
-        const res = await fetch(`http://localhost:8000/agmarknet/districts?state_id=${stateId}`);
+        const res = await fetch(`${getApiBase()}/agmarknet/districts?state_id=${stateId}`);
         const data = await res.json();
         const sel = document.getElementById('agmkDistrictSelect');
         sel.innerHTML = '<option value="">All Districts</option>' +
@@ -3673,7 +3676,7 @@ Sawaal: ${q} [/INST]`;
 
     async function loadMarketsByDistrict(stateId, districtId) {
       try {
-        let url = `http://localhost:8000/agmarknet/markets?state_id=${stateId}`;
+        let url = `${getApiBase()}/agmarknet/markets?state_id=${stateId}`;
         if (districtId) url += `&district_id=${districtId}`;
         const res = await fetch(url);
         const data = await res.json();
@@ -3869,7 +3872,7 @@ Sawaal: ${q} [/INST]`;
 
       try {
         const endpoint = _agmkCurrentTab === 'season' ? 'season-data' : 'live-data';
-        let url = `http://localhost:8000/agmarknet/${endpoint}?state_id=${stateId}&limit=50&page=${page}`;
+        let url = `${getApiBase()}/agmarknet/${endpoint}?state_id=${stateId}&limit=50&page=${page}`;
         if (distId) url += `&district_ids=${distId}`;
         if (mkts.length && mkts.length < _agmkAllMarkets.length) url += `&market_ids=${mkts.join(',')}`;
         if (commodityVal !== '100001') url += `&commodity_ids=${commodityVal}`;
@@ -4017,7 +4020,7 @@ Sawaal: ${q} [/INST]`;
       const distSelect = document.getElementById('mandiDistrictSelect');
       if (distSelect) {
         try {
-          const res = await fetch(`http://localhost:8000/mandi/districts?state=${encodeURIComponent(state)}`);
+          const res = await fetch(`${getApiBase()}/mandi/districts?state=${encodeURIComponent(state)}`);
           const data = await res.json();
           let html = '<option value="ALL">All Districts</option>';
           if (data.districts?.length) {
@@ -4068,7 +4071,7 @@ Sawaal: ${q} [/INST]`;
       if (!tbody) return;
 
       try {
-        let url = `http://localhost:8000/mandi/nearby?state=${encodeURIComponent(state)}&district=${encodeURIComponent(district)}&commodity=${encodeURIComponent(commodity)}&radius_km=${radius}`;
+        let url = `${getApiBase()}/mandi/nearby?state=${encodeURIComponent(state)}&district=${encodeURIComponent(district)}&commodity=${encodeURIComponent(commodity)}&radius_km=${radius}`;
         if (lat && lon) {
           url += `&lat=${lat}&lon=${lon}`;
         }
@@ -4118,7 +4121,7 @@ Sawaal: ${q} [/INST]`;
       modal.style.display = 'flex';
 
       try {
-        const res = await fetch(`http://localhost:8000/mandi/catalog?mandi=${encodeURIComponent(mandiName)}&district=${encodeURIComponent(district)}&state=${encodeURIComponent(state)}`);
+        const res = await fetch(`${getApiBase()}/mandi/catalog?mandi=${encodeURIComponent(mandiName)}&district=${encodeURIComponent(district)}&state=${encodeURIComponent(state)}`);
         const data = await res.json();
 
         if (data.catalog?.length) {
@@ -4161,7 +4164,7 @@ Sawaal: ${q} [/INST]`;
       if (!tbody) return;
 
       try {
-        let url = `http://localhost:8000/mandi/rates?commodity=${encodeURIComponent(commodity)}&state=${encodeURIComponent(state)}&district=${encodeURIComponent(district)}&season=${encodeURIComponent(season)}`;
+        let url = `${getApiBase()}/mandi/rates?commodity=${encodeURIComponent(commodity)}&state=${encodeURIComponent(state)}&district=${encodeURIComponent(district)}&season=${encodeURIComponent(season)}`;
         if (search) {
           url += `&search=${encodeURIComponent(search)}`;
         }
@@ -4205,7 +4208,7 @@ Sawaal: ${q} [/INST]`;
       box.innerHTML = `⏳ Calculating transport costs & net mandi profit for <strong>${quantity} Quintals</strong> of <strong>${commodity}</strong>...`;
 
       try {
-        const res = await fetch('http://localhost:8000/mandi/recommend', {
+        const res = await fetch(`${getApiBase()}/mandi/recommend`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ commodity, quantity_quintals: quantity, state, farmer_district: district })
@@ -4256,7 +4259,7 @@ Sawaal: ${q} [/INST]`;
 
       try {
         const endpoint = channel === 'sms' ? '/webhook/sms' : '/webhook/whatsapp';
-        const res = await fetch(`http://localhost:8000${endpoint}`, {
+        const res = await fetch(`${getApiBase()}${endpoint}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ from_number: fromNumber, message_body: messageBody, channel })
@@ -4300,7 +4303,7 @@ Sawaal: ${q} [/INST]`;
       const box = document.getElementById('radarResultBox');
 
       try {
-        const res = await fetch('http://localhost:8000/disease-radar/predict', {
+        const res = await fetch(`${getApiBase()}/disease-radar/predict`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ crop, temperature_c: temp, humidity_pct: hum, rain_forecast_mm: rain })
@@ -4355,7 +4358,7 @@ Sawaal: ${q} [/INST]`;
       input.value = '';
       screen.scrollTop = screen.scrollHeight;
 
-      const endpoint = channel === 'sms' ? 'http://localhost:8000/webhook/sms' : 'http://localhost:8000/webhook/whatsapp';
+      const endpoint = channel === 'sms' ? `${getApiBase()}/webhook/sms` : `${getApiBase()}/webhook/whatsapp`;
 
       try {
         const res = await fetch(endpoint, {
