@@ -1683,6 +1683,131 @@
     .glow-em {
       text-shadow: 0 0 20px rgba(0, 229, 153, 0.5);
     }
+
+    /* ══════════════════════════════════════════════
+   MOBILE RESPONSIVENESS & DRAWER SIDEBAR
+══════════════════════════════════════════════ */
+    .mobile-toggle-btn {
+      display: none;
+      background: #f0f9ff;
+      border: 1px solid var(--glass-border);
+      color: var(--sky);
+      font-size: 20px;
+      padding: 6px 12px;
+      border-radius: var(--r-sm);
+      cursor: pointer;
+      margin-right: 12px;
+      transition: var(--transition);
+    }
+
+    .mobile-toggle-btn:hover {
+      background: #e0f2fe;
+    }
+
+    .sidebar-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.5);
+      backdrop-filter: blur(4px);
+      z-index: 998;
+      opacity: 0;
+      transition: opacity 0.25s ease;
+    }
+
+    .sidebar-overlay.active {
+      display: block;
+      opacity: 1;
+    }
+
+    @media (max-width: 1024px) {
+      .mobile-toggle-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .sidebar {
+        position: fixed;
+        top: 0;
+        bottom: 0;
+        left: -290px;
+        z-index: 999;
+        transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        box-shadow: 0 0 35px rgba(2, 132, 199, 0.2);
+        background: #ffffff;
+      }
+
+      .sidebar.open {
+        left: 0;
+      }
+
+      .main {
+        margin-left: 0;
+        width: 100%;
+      }
+
+      .topbar {
+        padding: 12px 18px;
+      }
+
+      .content {
+        padding: 20px 16px 40px;
+      }
+
+      .grid-4,
+      .grid-3,
+      .grid-2 {
+        grid-template-columns: 1fr;
+        gap: 16px;
+      }
+
+      .hero-banner {
+        padding: 24px 18px;
+      }
+
+      .hero-title {
+        font-size: 22px;
+        line-height: 1.3;
+      }
+
+      .hero-chips {
+        flex-wrap: wrap;
+      }
+
+      .table-container {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .card {
+        padding: 18px;
+      }
+
+      .topbar-right {
+        gap: 6px;
+      }
+
+      .api-pill span,
+      .time-chip {
+        font-size: 10.5px;
+        padding: 4px 8px;
+      }
+
+      .topbar-left h1 {
+        font-size: 18px;
+      }
+
+      .section-title {
+        font-size: 20px;
+      }
+
+      .stat-card {
+        padding: 16px;
+      }
+    }
   </style>
 </head>
 
@@ -1695,8 +1820,11 @@
     <div class="aurora-blob"></div>
   </div>
 
+  <!-- Sidebar Backdrop Overlay for Mobile Drawer -->
+  <div id="sidebarOverlay" class="sidebar-overlay" onclick="toggleMobileSidebar()"></div>
+
   <!-- ══ SIDEBAR ══ -->
-  <aside class="sidebar">
+  <aside class="sidebar" id="appSidebar">
     <div class="sidebar-brand">
       <div class="brand-logo" style="padding: 4px 0;">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 140"
@@ -1792,9 +1920,15 @@
 
     <!-- Topbar -->
     <header class="topbar">
-      <div class="topbar-left">
-        <h1 id="pageTitle">Developer Overview</h1>
-        <p id="pageSub">Real-Time Domain RAG + Fine-tuned LLM Benchmark Metrics</p>
+      <div class="topbar-left" style="display:flex;align-items:center;">
+        <button id="hamburgerBtn" class="mobile-toggle-btn" onclick="toggleMobileSidebar()"
+          aria-label="Toggle Navigation Menu">
+          ☰
+        </button>
+        <div>
+          <h1 id="pageTitle">Developer Overview</h1>
+          <p id="pageSub">Real-Time Domain RAG + Fine-tuned LLM Benchmark Metrics</p>
+        </div>
       </div>
       <div class="topbar-right">
         <div class="api-pill">
@@ -1955,10 +2089,9 @@
               <div class="dropzone-sub">Real Computer Vision AI · Supports 38+ Crop-Disease Categories</div>
             </div>
 
-            <div id="scannerPreviewBox" class="scan-preview"
-              style="background-image:url('https://images.unsplash.com/photo-1574943320219-553eb213f72d?auto=format&fit=crop&w=600&q=80');">
+            <div id="scannerPreviewBox" class="scan-preview" style="display:none;">
               <div class="scan-line"></div>
-              <div id="boxOverlay" class="scan-box" style="top:20%;left:25%;width:40%;height:50%;">
+              <div id="boxOverlay" class="scan-box" style="display:none;top:20%;left:25%;width:40%;height:50%;">
                 <div class="scan-box-label" id="boxLabel">Yellow Rust (94.8%)</div>
               </div>
             </div>
@@ -1966,114 +2099,110 @@
 
           <!-- Diagnostic Report -->
           <div class="card" id="visionResultsCard">
-            <div class="card-title" style="margin-bottom:16px;display:flex;align-items:center;justify-content:between;">
+            <div class="card-title"
+              style="margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;">
               <span>🩺 AI Diagnostic Report</span>
               <span class="badge badge-em" style="font-size:11px;">ICAR Verified</span>
             </div>
 
-            <!-- Crop & Disease Overview Box -->
-            <div class="alert alert-am mb-6" style="border-radius:12px;padding:16px;">
-              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
-                <div
-                  style="font-size:11px;font-weight:700;letter-spacing:0.8px;text-transform:uppercase;color:var(--text-3);">
-                  🌱 Detected Crop</div>
-                <div id="vCropBadge"
-                  style="font-size:13px;font-weight:800;color:var(--emerald);background:rgba(16,185,129,0.12);padding:3px 10px;border-radius:20px;">
-                  Plum (Prunus spp.)</div>
-              </div>
+            <!-- Placeholder Blank State -->
+            <div id="visionReportPlaceholder" style="text-align:center; padding: 48px 20px; color: var(--text-3);">
+              <div style="font-size: 48px; margin-bottom: 12px; opacity: 0.6;">🍃</div>
+              <h4 style="font-size: 16px; font-weight: 700; color: var(--text-2); margin-bottom: 6px;">No Leaf Image
+                Uploaded Yet</h4>
+              <p style="font-size: 13px; max-width: 320px; margin: 0 auto; line-height: 1.5;">Upload or drop a crop leaf
+                photo in the scanner box to run real-time Vision AI analysis and view infection diagnosis.</p>
+            </div>
 
-              <div style="margin-bottom:8px;">
-                <div
-                  style="font-size:11px;font-weight:700;letter-spacing:0.8px;text-transform:uppercase;color:var(--text-3);">
-                  🦠 Detected Disease</div>
-                <div id="vDiagnosis" style="font-size:20px;font-weight:800;color:var(--amber);margin-top:2px;">Plum Rust
+            <!-- Dynamic Report Body (Populated after Vision API Response) -->
+            <div id="visionReportContent" style="display:none;">
+              <!-- Crop & Disease Overview Box -->
+              <div class="alert alert-am mb-6" style="border-radius:12px;padding:16px;" id="vOverviewBox">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+                  <div
+                    style="font-size:11px;font-weight:700;letter-spacing:0.8px;text-transform:uppercase;color:var(--text-3);">
+                    🌱 Detected Crop</div>
+                  <div id="vCropBadge"
+                    style="font-size:13px;font-weight:800;color:var(--emerald);background:rgba(16,185,129,0.12);padding:3px 10px;border-radius:20px;">
+                    -</div>
+                </div>
+
+                <div style="margin-bottom:8px;">
+                  <div
+                    style="font-size:11px;font-weight:700;letter-spacing:0.8px;text-transform:uppercase;color:var(--text-3);">
+                    🦠 Detected Disease</div>
+                  <div id="vDiagnosis" style="font-size:20px;font-weight:800;color:var(--amber);margin-top:2px;">-</div>
+                </div>
+
+                <div style="margin-bottom:12px;">
+                  <div
+                    style="font-size:11px;font-weight:700;letter-spacing:0.8px;text-transform:uppercase;color:var(--text-3);">
+                    🧬 Likely Pathogen</div>
+                  <div id="vPathogen"
+                    style="font-size:13.5px;font-weight:700;font-style:italic;color:var(--sky);margin-top:2px;">-</div>
+                </div>
+
+                <div class="grid grid-cols-3 gap-2 text-center"
+                  style="background:rgba(0,0,0,0.04);padding:10px;border-radius:8px;">
+                  <div>
+                    <div style="font-size:10px;color:var(--text-3);font-weight:600;">🎯 Confidence</div>
+                    <strong id="vConfidence" class="text-em" style="font-size:13px;">-</strong>
+                  </div>
+                  <div>
+                    <div style="font-size:10px;color:var(--text-3);font-weight:600;">📊 Affected Area</div>
+                    <strong id="vAffectedArea" class="text-sk" style="font-size:13px;">-</strong>
+                  </div>
+                  <div>
+                    <div style="font-size:10px;color:var(--text-3);font-weight:600;">⚠️ Severity</div>
+                    <strong id="vSeverity" class="text-ro" style="font-size:13px;">-</strong>
+                  </div>
+                </div>
+
+                <div class="risk-bar-wrap mt-3">
+                  <div class="risk-bar-fill" id="riskBar"
+                    style="width:0%;background:linear-gradient(90deg,var(--amber),var(--rose))"></div>
                 </div>
               </div>
 
-              <div style="margin-bottom:12px;">
-                <div
-                  style="font-size:11px;font-weight:700;letter-spacing:0.8px;text-transform:uppercase;color:var(--text-3);">
-                  🧬 Likely Pathogen</div>
-                <div id="vPathogen"
-                  style="font-size:13.5px;font-weight:700;font-style:italic;color:var(--sk);margin-top:2px;">
-                  Tranzschelia discolor</div>
-              </div>
-
-              <div class="grid grid-cols-3 gap-2 text-center"
-                style="background:rgba(0,0,0,0.04);padding:10px;border-radius:8px;">
-                <div>
-                  <div style="font-size:10px;color:var(--text-3);font-weight:600;">🎯 Confidence</div>
-                  <strong id="vConfidence" class="text-em" style="font-size:13px;">91.2%</strong>
+              <!-- Visual Findings -->
+              <div style="margin-bottom:16px;">
+                <div class="text-sm fw-700"
+                  style="color:var(--amber);margin-bottom:6px;display:flex;align-items:center;gap:6px;">
+                  <span>🔍</span> Visual Findings
                 </div>
-                <div>
-                  <div style="font-size:10px;color:var(--text-3);font-weight:600;">📊 Affected Area</div>
-                  <strong id="vAffectedArea" class="text-sk" style="font-size:13px;">22.8%</strong>
+                <ul id="vVisualFindings" class="text-sm text-2" style="padding-left:18px;line-height:1.7;"></ul>
+              </div>
+
+              <div class="divider" style="margin:14px 0;"></div>
+
+              <!-- Cultural Management -->
+              <div style="margin-bottom:16px;">
+                <div class="text-sm fw-700 text-em" style="margin-bottom:6px;display:flex;align-items:center;gap:6px;">
+                  <span>🌿</span> Cultural Management
                 </div>
-                <div>
-                  <div style="font-size:10px;color:var(--text-3);font-weight:600;">⚠️ Severity</div>
-                  <strong id="vSeverity" class="text-ro" style="font-size:13px;">Moderate</strong>
+                <ul id="vCultural" class="text-sm text-2" style="padding-left:18px;line-height:1.7;"></ul>
+              </div>
+
+              <div class="divider" style="margin:14px 0;"></div>
+
+              <!-- Chemical Management Safety Box -->
+              <div
+                style="margin-bottom:16px;background:rgba(59,130,246,0.06);border:1px solid rgba(59,130,246,0.2);padding:14px;border-radius:10px;">
+                <div class="text-sm fw-700 text-sk" style="margin-bottom:6px;display:flex;align-items:center;gap:6px;">
+                  <span>🧪</span> Chemical Management
                 </div>
+                <p id="vChemical" class="text-sm text-2" style="line-height:1.6;font-weight:500;">-</p>
               </div>
 
-              <div class="risk-bar-wrap mt-3">
-                <div class="risk-bar-fill" id="riskBar"
-                  style="width:22.8%;background:linear-gradient(90deg,var(--amber),var(--rose))"></div>
+              <div class="divider" style="margin:14px 0;"></div>
+
+              <!-- Preventive Protocol -->
+              <div>
+                <div class="text-sm fw-700" style="margin-bottom:8px;display:flex;align-items:center;gap:6px;">
+                  <span>🛡️</span> Preventive Protocol
+                </div>
+                <ul id="vPreventive" class="text-sm text-2" style="padding-left:18px;line-height:1.7;"></ul>
               </div>
-            </div>
-
-            <!-- Visual Findings -->
-            <div style="margin-bottom:16px;">
-              <div class="text-sm fw-700"
-                style="color:var(--amber);margin-bottom:6px;display:flex;align-items:center;gap:6px;">
-                <span>🔍</span> Visual Findings
-              </div>
-              <ul id="vVisualFindings" class="text-sm text-2" style="padding-left:18px;line-height:1.7;">
-                <li>Yellow/orange to reddish-brown lesions visible on leaves</li>
-                <li>Rust-colored lesions consistent with plum rust</li>
-                <li>Multiple affected leaves indicate an established infection</li>
-              </ul>
-            </div>
-
-            <div class="divider" style="margin:14px 0;"></div>
-
-            <!-- Cultural Management -->
-            <div style="margin-bottom:16px;">
-              <div class="text-sm fw-700 text-em" style="margin-bottom:6px;display:flex;align-items:center;gap:6px;">
-                <span>🌿</span> Cultural Management
-              </div>
-              <ul id="vCultural" class="text-sm text-2" style="padding-left:18px;line-height:1.7;">
-                <li>Remove heavily infected/fallen leaves where practical.</li>
-                <li>Maintain good canopy ventilation through appropriate pruning.</li>
-                <li>Avoid prolonged leaf wetness and excessive canopy humidity.</li>
-              </ul>
-            </div>
-
-            <div class="divider" style="margin:14px 0;"></div>
-
-            <!-- Chemical Management Safety Box -->
-            <div
-              style="margin-bottom:16px;background:rgba(59,130,246,0.06);border:1px solid rgba(59,130,246,0.2);padding:14px;border-radius:10px;">
-              <div class="text-sm fw-700 text-sk" style="margin-bottom:6px;display:flex;align-items:center;gap:6px;">
-                <span>🧪</span> Chemical Management
-              </div>
-              <p id="vChemical" class="text-sm text-2" style="line-height:1.6;font-weight:500;">
-                Use a fungicide registered/labelled for plum rust in your region. Apply according to the product label,
-                crop stage, and local agricultural recommendations.
-              </p>
-            </div>
-
-            <div class="divider" style="margin:14px 0;"></div>
-
-            <!-- Preventive Protocol -->
-            <div>
-              <div class="text-sm fw-700" style="margin-bottom:8px;display:flex;align-items:center;gap:6px;">
-                <span>🛡️</span> Preventive Protocol
-              </div>
-              <ul id="vPreventive" class="text-sm text-2" style="padding-left:18px;line-height:1.7;">
-                <li>Begin regular monitoring during periods favorable for rust.</li>
-                <li>Pay particular attention after prolonged rain, dew, or humid weather.</li>
-                <li>Inspect both upper and lower leaf surfaces.</li>
-              </ul>
             </div>
           </div>
         </div>
@@ -3041,6 +3170,23 @@
       inspector: ['FAISS Vector Inspector', 'Real-Time Embedding Similarity & Context Payload Assembly'],
     };
 
+    // Global helper for backend API base URL
+    function getApiBase() {
+      const customUrl = localStorage.getItem('AGRISATHI_BACKEND_URL');
+      if (customUrl) return customUrl.replace(/\/$/, '');
+      if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+        return 'http://localhost:8000';
+      }
+      return 'https://agrisathi-ai-3tc0.onrender.com';
+    }
+
+    function toggleMobileSidebar() {
+      const sidebar = document.getElementById('appSidebar');
+      const overlay = document.getElementById('sidebarOverlay');
+      if (sidebar) sidebar.classList.toggle('open');
+      if (overlay) overlay.classList.toggle('active');
+    }
+
     function switchTab(tabId, el) {
       document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
       document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
@@ -3050,6 +3196,14 @@
       const meta = PAGE_META[tabId] || ['AgriSathi AI', ''];
       document.getElementById('pageTitle').innerText = meta[0];
       document.getElementById('pageSub').innerText = meta[1];
+
+      // Close mobile drawer if open
+      const sidebar = document.getElementById('appSidebar');
+      const overlay = document.getElementById('sidebarOverlay');
+      if (sidebar && sidebar.classList.contains('open')) {
+        sidebar.classList.remove('open');
+        if (overlay) overlay.classList.remove('active');
+      }
     }
 
     // ══════════════════════════════════════════
@@ -3140,9 +3294,9 @@
     // ══════════════════════════════════════════
     async function checkBackendHealth() {
       try {
-        const res = await fetch('http://localhost:8000/health');
+        const res = await fetch(`${getApiBase()}/health`);
         if (res.ok) {
-          document.getElementById('apiStatusText').innerText = 'Backend API Live · localhost:8000';
+          document.getElementById('apiStatusText').innerText = `Backend API Live · ${getApiBase().replace('http://', '').replace('https://', '')}`;
         }
       } catch (e) {
         document.getElementById('apiStatusText').innerText = 'Demo Mode · Backend Offline';
@@ -3182,23 +3336,55 @@
 
     async function triggerVisionAnalysis(b64Data = null) {
       const preview = document.getElementById('scannerPreviewBox');
+      const overlayBox = document.getElementById('boxOverlay');
       const label = document.getElementById('boxLabel');
+      const placeholder = document.getElementById('visionReportPlaceholder');
+      const reportContent = document.getElementById('visionReportContent');
 
       if (preview) preview.style.display = 'block';
 
+      // Render loading state in placeholder
+      if (placeholder) {
+        placeholder.style.display = 'block';
+        placeholder.innerHTML = `
+          <div style="font-size:36px;margin-bottom:10px;animation:spin 1s linear infinite;display:inline-block;">⚡</div>
+          <h4 style="font-size:15px;font-weight:700;color:var(--sky);margin-bottom:4px;">Analyzing Crop Leaf Image...</h4>
+          <p style="font-size:12px;color:var(--text-3);">Running Vision AI classification, non-leaf validation, &amp; lesion spot detection.</p>
+        `;
+      }
+      if (reportContent) reportContent.style.display = 'none';
+
       try {
-        const res = await fetch('http://localhost:8000/vision/analyze', {
+        const res = await fetch(`${getApiBase()}/vision/analyze`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ image_b64: b64Data })
         });
         const data = await res.json();
 
-        if (document.getElementById('vCropBadge')) document.getElementById('vCropBadge').innerText = data.crop || 'Plum (Prunus spp.)';
-        if (document.getElementById('vDiagnosis')) document.getElementById('vDiagnosis').innerText = data.diagnosis;
-        if (document.getElementById('vPathogen')) document.getElementById('vPathogen').innerText = data.pathogen_scientific || 'Pathogen Species';
-        if (document.getElementById('vConfidence')) document.getElementById('vConfidence').innerText = (data.confidence * 100).toFixed(1) + '%';
-        if (document.getElementById('vAffectedArea')) document.getElementById('vAffectedArea').innerText = data.affected_area || (data.confidence * 25).toFixed(1) + '%';
+        // Check non-leaf validation flag from backend vision engine
+        if (data.is_valid_leaf === false) {
+          if (overlayBox) overlayBox.style.display = 'none';
+          if (placeholder) {
+            placeholder.style.display = 'block';
+            placeholder.innerHTML = `
+              <div style="font-size: 42px; margin-bottom: 8px;">⚠️</div>
+              <h4 style="font-size: 16px; font-weight: 800; color: var(--rose); margin-bottom: 6px;">Invalid Image Detected</h4>
+              <p style="font-size: 13px; color: var(--text-2); max-width: 340px; margin: 0 auto; line-height: 1.5;">${data.error_message || 'The uploaded file is not recognized as a plant leaf. Please upload a clear photo of a crop leaf.'}</p>
+            `;
+          }
+          return;
+        }
+
+        // Valid Leaf Diagnostic Report
+        if (placeholder) placeholder.style.display = 'none';
+        if (reportContent) reportContent.style.display = 'block';
+
+        if (document.getElementById('vCropBadge')) document.getElementById('vCropBadge').innerText = data.crop || 'Crop Leaf';
+        if (document.getElementById('vDiagnosis')) document.getElementById('vDiagnosis').innerText = data.diagnosis || 'Healthy / Undetermined';
+        if (document.getElementById('vPathogen')) document.getElementById('vPathogen').innerText = data.pathogen_scientific || 'N/A';
+        if (document.getElementById('vConfidence')) document.getElementById('vConfidence').innerText = (data.confidence ? (data.confidence * 100).toFixed(1) : '90.0') + '%';
+        if (document.getElementById('vAffectedArea')) document.getElementById('vAffectedArea').innerText = data.affected_area || '15.0%';
         if (document.getElementById('vSeverity')) document.getElementById('vSeverity').innerText = data.severity_level || 'Moderate';
 
         if (document.getElementById('vVisualFindings') && data.visual_findings) {
@@ -3207,19 +3393,39 @@
         if (document.getElementById('vCultural') && data.cultural_management) {
           document.getElementById('vCultural').innerHTML = data.cultural_management.map(c => `<li>${c}</li>`).join('');
         }
-        if (document.getElementById('vChemical')) document.getElementById('vChemical').innerText = data.chemical_control;
+        if (document.getElementById('vChemical')) document.getElementById('vChemical').innerText = data.chemical_control || 'Apply recommended organic or targeted fungicide as per local agricultural advice.';
         if (document.getElementById('vPreventive') && data.preventive_measures) {
           document.getElementById('vPreventive').innerHTML = data.preventive_measures.map(m => `<li>${m}</li>`).join('');
         }
 
-        if (label) label.innerText = `${data.diagnosis} (${(data.confidence * 100).toFixed(1)}%)`;
+        // Dynamic Bounding Box positioning based on normalized percentage coordinates
+        if (overlayBox && data.bounding_boxes && data.bounding_boxes.length > 0) {
+          const box = data.bounding_boxes[0];
+          overlayBox.style.top = (box.ymin_pct !== undefined ? box.ymin_pct : 20) + '%';
+          overlayBox.style.left = (box.xmin_pct !== undefined ? box.xmin_pct : 25) + '%';
+          overlayBox.style.width = (box.width_pct !== undefined ? box.width_pct : 40) + '%';
+          overlayBox.style.height = (box.height_pct !== undefined ? box.height_pct : 45) + '%';
+          overlayBox.style.display = 'block';
+        } else if (overlayBox) {
+          overlayBox.style.display = 'block';
+        }
+
+        if (label) label.innerText = `${data.diagnosis || 'Infected Region'} (${((data.confidence || 0.9) * 100).toFixed(1)}%)`;
 
         const sevArea = parseFloat(data.affected_area) || 22.8;
         if (document.getElementById('riskBar')) {
           document.getElementById('riskBar').style.width = Math.min(100, Math.max(10, sevArea * 3.5)) + '%';
         }
       } catch (e) {
-        console.log('Vision analysis warning:', e);
+        console.error('Vision analysis error:', e);
+        if (placeholder) {
+          placeholder.style.display = 'block';
+          placeholder.innerHTML = `
+            <div style="font-size: 36px; margin-bottom: 8px;">⚡</div>
+            <h4 style="font-size: 15px; font-weight: 700; color: var(--rose); margin-bottom: 4px;">Vision Analysis Failed</h4>
+            <p style="font-size: 12px; color: var(--text-3);">Please check if the FastAPI backend server is running on port 8000.</p>
+          `;
+        }
       }
     }
 

@@ -281,6 +281,8 @@ class VisionRequest(BaseModel):
     crop_type: Optional[str] = None
 
 class VisionResponse(BaseModel):
+    is_valid_leaf: Optional[bool] = True
+    error_message: Optional[str] = None
     crop: str
     diagnosis: str
     pathogen_scientific: str
@@ -307,6 +309,26 @@ def analyze_crop_image(req: VisionRequest):
     
     # 1. Run Real Computer Vision Inference
     res = analyze_leaf_bytes(image_b64, requested_crop=crop)
+
+    if res.get("is_valid_leaf") is False:
+        return VisionResponse(
+            is_valid_leaf=False,
+            error_message=res.get("error_message", "Invalid Image: Uploaded photo does not appear to be a crop leaf."),
+            crop=res.get("crop", "Unknown"),
+            diagnosis=res.get("diagnosis", "Invalid Image"),
+            pathogen_scientific=res.get("pathogen_scientific", "N/A"),
+            disease_detected=False,
+            confidence=0.0,
+            affected_area="0%",
+            severity_level="None",
+            severity="Invalid Image",
+            visual_findings=res.get("visual_findings", ["Uploaded image is not a valid crop leaf."]),
+            cultural_management=[],
+            organic_control="N/A",
+            chemical_control="N/A",
+            preventive_measures=[],
+            bounding_boxes=[]
+        )
     
     # 2. Dynamic FAISS RAG Search for ICAR treatments if FAISS index is loaded
     try:
@@ -326,6 +348,8 @@ def analyze_crop_image(req: VisionRequest):
         print(f"RAG lookup warning: {e}")
 
     return VisionResponse(
+        is_valid_leaf=res.get("is_valid_leaf", True),
+        error_message=res.get("error_message"),
         crop=res["crop"],
         diagnosis=res["diagnosis"],
         pathogen_scientific=res.get("pathogen_scientific", "Pathogen Species"),

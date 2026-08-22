@@ -479,13 +479,108 @@ def analyze_leaf_bytes(image_b64: str, requested_crop: str = None) -> dict:
     without hardcoded fallbacks.
     """
     # 1. Decode base64 image
+    if not image_b64 or not isinstance(image_b64, str) or len(image_b64.strip()) < 20:
+        return {
+            "is_valid_leaf": False,
+            "error_message": "Invalid Image File: No image data provided. Please upload a clear photo of a crop leaf.",
+            "crop": "Unknown",
+            "diagnosis": "Invalid Image",
+            "pathogen_scientific": "N/A",
+            "disease_detected": False,
+            "confidence": 0.0,
+            "affected_area": "0%",
+            "severity_level": "None",
+            "severity": "Invalid Image",
+            "visual_findings": ["No crop leaf detected in uploaded image."],
+            "cultural_management": [],
+            "organic_control": "N/A",
+            "chemical_control": "N/A",
+            "preventive_measures": [],
+            "bounding_boxes": []
+        }
+
     try:
         clean_b64 = re.sub(r"^data:image/[a-zA-Z]+;base64,", "", image_b64.strip())
         img_bytes = base64.b64decode(clean_b64)
         img = Image.open(io.BytesIO(img_bytes)).convert("RGB")
     except Exception as e:
         print(f"Image decode error: {e}")
-        img = None
+        return {
+            "is_valid_leaf": False,
+            "error_message": "Invalid Image: Could not decode image file. Please upload a valid JPEG/PNG photo.",
+            "crop": "Unknown",
+            "diagnosis": "Invalid Image",
+            "pathogen_scientific": "N/A",
+            "disease_detected": False,
+            "confidence": 0.0,
+            "affected_area": "0%",
+            "severity_level": "None",
+            "severity": "Invalid Image",
+            "visual_findings": ["Invalid image format."],
+            "cultural_management": [],
+            "organic_control": "N/A",
+            "chemical_control": "N/A",
+            "preventive_measures": [],
+            "bounding_boxes": []
+        }
+
+    # 2. Non-Leaf / Invalid Image Validation
+    w, h = img.size
+    sample = img.resize((60, 60))
+    colors = list(sample.getdata())
+    total_px = len(colors)
+
+    plant_px = 0
+    for r, g, b in colors:
+        is_green = (g > r and g > b and g > 35)
+        is_yellow = (r > 100 and g > 90 and b < 120 and abs(r - g) < 50)
+        is_brown = (r > 70 and g > 45 and b < 70 and r > b)
+        is_rust_orange = (r > 130 and g > 60 and b < 60)
+        if is_green or is_yellow or is_brown or is_rust_orange:
+            plant_px += 1
+
+    plant_ratio = plant_px / max(1, total_px)
+    
+    clip_is_non_leaf = False
+    clip_classifier = load_zero_shot_clip()
+    if clip_classifier:
+        try:
+            valid_check = clip_classifier(img, candidate_labels=[
+                "crop leaf or plant foliage photo",
+                "human face or person photo",
+                "car or motor vehicle",
+                "building structure or room interior",
+                "text document or paper",
+                "electronic device screen",
+                "animal or pet"
+            ])
+            if valid_check and valid_check[0]["label"] != "crop leaf or plant foliage photo" and valid_check[0]["score"] > 0.45:
+                clip_is_non_leaf = True
+        except Exception as e_clip:
+            print(f"CLIP non-leaf check warning: {e_clip}")
+
+    if plant_ratio < 0.08 or clip_is_non_leaf:
+        return {
+            "is_valid_leaf": False,
+            "error_message": "Invalid Image: The uploaded photo does not appear to be a crop or plant leaf. Please upload a clear photo of an infected or healthy crop leaf.",
+            "crop": "Non-Plant / Invalid",
+            "diagnosis": "Invalid Image",
+            "pathogen_scientific": "N/A",
+            "disease_detected": False,
+            "confidence": 0.0,
+            "affected_area": "0%",
+            "severity_level": "None",
+            "severity": "Invalid Image (Non-Plant Photo)",
+            "visual_findings": [
+                "Uploaded image does not match plant foliage / crop leaf features",
+                "Please upload a clear photo of a crop leaf to perform pathology scanning"
+            ],
+            "cultural_management": [],
+            "organic_control": "N/A",
+            "chemical_control": "N/A",
+            "preventive_measures": [],
+            "bounding_boxes": []
+        }
 
     predicted_key = None
     confidence = 0.912
@@ -759,13 +854,62 @@ def analyze_leaf_bytes(image_b64: str, requested_crop: str = None) -> dict:
             ]
         }
 
-    # 5. Generate Bounding Boxes & Severity calculation
+    # 5. Dynamic Bounding Box Calculation based on actual lesion/spot locations
+    grid_rows, grid_cols = 10, 10
+    lesion_pixels = []
+    
+    try:
+        small_img = img.resize((grid_cols, grid_rows))
+        pxs = list(small_img.getdata())
+        for idx, (r, g, b) in enumerate(pxs):
+            row = idx // grid_cols
+            col = idx % grid_cols
+            is_lesion = (r > 130 and g > 100 and b < 100) or (r > 90 and g < 90 and b < 80) or (r > 140 and g > 130 and b > 120 and abs(r-g) < 20)
+            if is_lesion:
+                lesion_pixels.append((row, col))
+    except Exception as e_box:
+        print(f"Bbox detection note: {e_box}")
+
+    if lesion_pixels:
+        min_row = min(p[0] for p in lesion_pixels)
+        max_row = max(p[0] for p in lesion_pixels)
+        min_col = min(p[1] for p in lesion_pixels)
+        max_col = max(p[1] for p in lesion_pixels)
+
+        top_pct = round((min_row / grid_rows) * 100, 1)
+        left_pct = round((min_col / grid_cols) * 100, 1)
+        width_pct = round(max(22.0, ((max_col - min_col + 1) / grid_cols) * 100), 1)
+        height_pct = round(max(22.0, ((max_row - min_row + 1) / grid_rows) * 100), 1)
+    else:
+        top_pct = 20.0
+        left_pct = 20.0
+        width_pct = 55.0
+        height_pct = 55.0
+
+    if top_pct + height_pct > 96.0:
+        height_pct = round(96.0 - top_pct, 1)
+    if left_pct + width_pct > 96.0:
+        width_pct = round(96.0 - left_pct, 1)
+
     sev_pct = round(confidence * 25, 1)
     sev_level = "Moderate" if sev_pct >= 15 else "Low"
     if sev_pct >= 40:
         sev_level = "Severe (Critical)"
     
+    bbox = {
+        "top": top_pct,
+        "left": left_pct,
+        "width": width_pct,
+        "height": height_pct,
+        "x": round(left_pct * (img.width / 100), 1),
+        "y": round(top_pct * (img.height / 100), 1),
+        "label": f"{info['diagnosis']} ({round(confidence * 100, 1)}%)",
+        "confidence": confidence
+    }
+
     return {
+        "is_valid_leaf": True,
+        "error_message": None,
         "crop": info["crop"],
         "diagnosis": info["diagnosis"],
         "pathogen_scientific": info.get("pathogen_scientific", "Pathogen Species"),
@@ -779,12 +923,6 @@ def analyze_leaf_bytes(image_b64: str, requested_crop: str = None) -> dict:
         "organic_control": info["organic_control"],
         "chemical_control": info["chemical_control"],
         "preventive_measures": info["preventive_measures"],
-        "bounding_boxes": [
-            {
-                "x": 40, "y": 45, "width": 140, "height": 130,
-                "label": info["diagnosis"].split("(")[0].strip(),
-                "confidence": confidence
-            }
-        ]
+        "bounding_boxes": [bbox]
     }
 
