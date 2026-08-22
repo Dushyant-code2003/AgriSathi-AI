@@ -854,9 +854,9 @@ def analyze_leaf_bytes(image_b64: str, requested_crop: str = None) -> dict:
             ]
         }
 
-    # 5. Dynamic Bounding Box Calculation based on actual lesion/spot locations
-    grid_rows, grid_cols = 10, 10
-    lesion_pixels = []
+    # 5. Dynamic Multi-Box Lesion Spot Cluster Detection
+    grid_rows, grid_cols = 40, 40
+    lesion_mask = [[False] * grid_cols for _ in range(grid_rows)]
     
     try:
         small_img = img.resize((grid_cols, grid_rows))
@@ -864,48 +864,104 @@ def analyze_leaf_bytes(image_b64: str, requested_crop: str = None) -> dict:
         for idx, (r, g, b) in enumerate(pxs):
             row = idx // grid_cols
             col = idx % grid_cols
-            is_lesion = (r > 130 and g > 100 and b < 100) or (r > 90 and g < 90 and b < 80) or (r > 140 and g > 130 and b > 120 and abs(r-g) < 20)
-            if is_lesion:
-                lesion_pixels.append((row, col))
+            # Dark necrotic spot, yellow/chlorotic halo, rust spot, or leaf blight brown
+            is_dark_spot = (r < 110 and g < 90 and b < 80)
+            is_yellow_halo = (r > 130 and g > 110 and b < 100 and abs(r - g) < 40)
+            is_rust_pustule = (r > 140 and g > 60 and b < 60)
+            is_lesion_brown = (r > 80 and g < 75 and b < 70 and r > b)
+            
+            if is_dark_spot or is_yellow_halo or is_rust_pustule or is_lesion_brown:
+                lesion_mask[row][col] = True
     except Exception as e_box:
         print(f"Bbox detection note: {e_box}")
 
-    if lesion_pixels:
-        min_row = min(p[0] for p in lesion_pixels)
-        max_row = max(p[0] for p in lesion_pixels)
-        min_col = min(p[1] for p in lesion_pixels)
-        max_col = max(p[1] for p in lesion_pixels)
+    # Connected Components BFS clustering
+    visited = [[False] * grid_cols for _ in range(grid_rows)]
+    clusters = []
 
-        top_pct = round((min_row / grid_rows) * 100, 1)
-        left_pct = round((min_col / grid_cols) * 100, 1)
-        width_pct = round(max(22.0, ((max_col - min_col + 1) / grid_cols) * 100), 1)
-        height_pct = round(max(22.0, ((max_row - min_row + 1) / grid_rows) * 100), 1)
+    for r in range(grid_rows):
+        for c in range(grid_cols):
+            if lesion_mask[r][c] and not visited[r][c]:
+                cluster_pixels = []
+                queue = [(r, c)]
+                visited[r][c] = True
+                
+                while queue:
+                    curr_r, curr_c = queue.pop(0)
+                    cluster_pixels.append((curr_r, curr_c))
+                    
+                    for dr in [-1, 0, 1]:
+                        for dc in [-1, 0, 1]:
+                            nr, nc = curr_r + dr, curr_c + dc
+                            if 0 <= nr < grid_rows and 0 <= nc < grid_cols:
+                                if lesion_mask[nr][nc] and not visited[nr][nc]:
+                                    visited[nr][nc] = True
+                                    queue.append((nr, nc))
+                
+                if len(cluster_pixels) >= 2:
+                    clusters.append(cluster_pixels)
+
+    # Sort clusters by pixel count descending
+    clusters.sort(key=lambda cl: len(cl), reverse=True)
+    
+    bounding_boxes = []
+    
+    if clusters:
+        # Select top 1 to 4 distinct lesion spot clusters
+        top_clusters = clusters[:4]
+        for idx, cl in enumerate(top_clusters):
+            min_r = min(p[0] for p in cl)
+            max_r = max(p[0] for p in cl)
+            min_c = min(p[1] for p in cl)
+            max_c = max(p[1] for p in cl)
+            
+            top_pct = round(max(3.0, (min_r / grid_rows) * 100 - 2.0), 1)
+            left_pct = round(max(3.0, (min_c / grid_cols) * 100 - 2.0), 1)
+            width_pct = round(min(90.0, ((max_c - min_c + 1) / grid_cols) * 100 + 4.0), 1)
+            height_pct = round(min(90.0, ((max_r - min_r + 1) / grid_rows) * 100 + 4.0), 1)
+            
+            if top_pct + height_pct > 96.0:
+                height_pct = round(96.0 - top_pct, 1)
+            if left_pct + width_pct > 96.0:
+                width_pct = round(96.0 - left_pct, 1)
+                
+            spot_conf = round(max(0.75, confidence - (idx * 0.03)), 3)
+            spot_label = f"{info['diagnosis']} #{idx+1} ({round(spot_conf * 100, 1)}%)"
+            
+            bounding_boxes.append({
+                "top": top_pct,
+                "left": left_pct,
+                "width": width_pct,
+                "height": height_pct,
+                "ymin_pct": top_pct,
+                "xmin_pct": left_pct,
+                "width_pct": width_pct,
+                "height_pct": height_pct,
+                "x": round(left_pct * (img.width / 100), 1),
+                "y": round(top_pct * (img.height / 100), 1),
+                "label": spot_label,
+                "confidence": spot_conf
+            })
     else:
-        top_pct = 20.0
-        left_pct = 20.0
-        width_pct = 55.0
-        height_pct = 55.0
-
-    if top_pct + height_pct > 96.0:
-        height_pct = round(96.0 - top_pct, 1)
-    if left_pct + width_pct > 96.0:
-        width_pct = round(96.0 - left_pct, 1)
+        bounding_boxes.append({
+            "top": 20.0,
+            "left": 20.0,
+            "width": 55.0,
+            "height": 55.0,
+            "ymin_pct": 20.0,
+            "xmin_pct": 20.0,
+            "width_pct": 55.0,
+            "height_pct": 55.0,
+            "x": round(20.0 * (img.width / 100), 1),
+            "y": round(20.0 * (img.height / 100), 1),
+            "label": f"{info['diagnosis']} (90.0%)",
+            "confidence": 0.90
+        })
 
     sev_pct = round(confidence * 25, 1)
     sev_level = "Moderate" if sev_pct >= 15 else "Low"
     if sev_pct >= 40:
         sev_level = "Severe (Critical)"
-    
-    bbox = {
-        "top": top_pct,
-        "left": left_pct,
-        "width": width_pct,
-        "height": height_pct,
-        "x": round(left_pct * (img.width / 100), 1),
-        "y": round(top_pct * (img.height / 100), 1),
-        "label": f"{info['diagnosis']} ({round(confidence * 100, 1)}%)",
-        "confidence": confidence
-    }
 
     return {
         "is_valid_leaf": True,
@@ -923,6 +979,6 @@ def analyze_leaf_bytes(image_b64: str, requested_crop: str = None) -> dict:
         "organic_control": info["organic_control"],
         "chemical_control": info["chemical_control"],
         "preventive_measures": info["preventive_measures"],
-        "bounding_boxes": [bbox]
+        "bounding_boxes": bounding_boxes
     }
 

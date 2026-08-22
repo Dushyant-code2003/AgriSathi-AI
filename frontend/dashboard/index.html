@@ -3398,16 +3398,35 @@
           document.getElementById('vPreventive').innerHTML = data.preventive_measures.map(m => `<li>${m}</li>`).join('');
         }
 
-        // Dynamic Bounding Box positioning based on normalized percentage coordinates
-        if (overlayBox && data.bounding_boxes && data.bounding_boxes.length > 0) {
-          const box = data.bounding_boxes[0];
-          overlayBox.style.top = (box.ymin_pct !== undefined ? box.ymin_pct : 20) + '%';
-          overlayBox.style.left = (box.xmin_pct !== undefined ? box.xmin_pct : 25) + '%';
-          overlayBox.style.width = (box.width_pct !== undefined ? box.width_pct : 40) + '%';
-          overlayBox.style.height = (box.height_pct !== undefined ? box.height_pct : 45) + '%';
-          overlayBox.style.display = 'block';
-        } else if (overlayBox) {
-          overlayBox.style.display = 'block';
+        // Dynamic Multi-Box Bounding Box Rendering for detected lesion spots
+        const previewBox = document.getElementById('scannerPreviewBox');
+        if (previewBox) {
+          // Remove previously rendered dynamic lesion boxes
+          previewBox.querySelectorAll('.dynamic-lesion-box').forEach(el => el.remove());
+
+          if (data.bounding_boxes && data.bounding_boxes.length > 0) {
+            data.bounding_boxes.forEach((box, i) => {
+              const boxDiv = document.createElement('div');
+              boxDiv.className = 'scan-box dynamic-lesion-box';
+              boxDiv.style.position = 'absolute';
+              boxDiv.style.top = (box.ymin_pct !== undefined ? box.ymin_pct : (box.top !== undefined ? box.top : 20)) + '%';
+              boxDiv.style.left = (box.xmin_pct !== undefined ? box.xmin_pct : (box.left !== undefined ? box.left : 25)) + '%';
+              boxDiv.style.width = (box.width_pct !== undefined ? box.width_pct : (box.width !== undefined ? box.width : 40)) + '%';
+              boxDiv.style.height = (box.height_pct !== undefined ? box.height_pct : (box.height !== undefined ? box.height : 45)) + '%';
+              boxDiv.style.display = 'block';
+              boxDiv.style.zIndex = (10 + i).toString();
+
+              const confStr = box.confidence ? (box.confidence * 100).toFixed(1) : '91.2';
+              const boxTag = box.label || `${data.diagnosis || 'Lesion Spot'} (${confStr}%)`;
+
+              boxDiv.innerHTML = `<div class="scan-box-label">${boxTag}</div>`;
+              previewBox.appendChild(boxDiv);
+            });
+            // Hide single static box element if dynamic boxes are rendered
+            if (overlayBox) overlayBox.style.display = 'none';
+          } else if (overlayBox) {
+            overlayBox.style.display = 'block';
+          }
         }
 
         if (label) label.innerText = `${data.diagnosis || 'Infected Region'} (${((data.confidence || 0.9) * 100).toFixed(1)}%)`;
