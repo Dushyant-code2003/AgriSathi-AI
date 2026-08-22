@@ -526,21 +526,38 @@ def analyze_leaf_bytes(image_b64: str, requested_crop: str = None) -> dict:
 
     # 2. Non-Leaf / Invalid Image Validation
     w, h = img.size
-    sample = img.resize((60, 60))
+    sample = img.resize((80, 80))
     colors = list(sample.getdata())
     total_px = len(colors)
 
-    plant_px = 0
-    for r, g, b in colors:
-        is_green = (g > r and g > b and g > 35)
-        is_yellow = (r > 100 and g > 90 and b < 120 and abs(r - g) < 50)
-        is_brown = (r > 70 and g > 45 and b < 70 and r > b)
-        is_rust_orange = (r > 130 and g > 60 and b < 60)
-        if is_green or is_yellow or is_brown or is_rust_orange:
-            plant_px += 1
+    green_px = 0
+    foliage_px = 0
+    skin_human_px = 0
 
-    plant_ratio = plant_px / max(1, total_px)
-    
+    for r, g, b in colors:
+        # True Plant Chlorophyll Green
+        is_true_green = (g > r * 1.05 and g > b * 1.1 and g > 35) or (g > 40 and g >= r and g >= b and (g - b) >= 4)
+        # Chlorotic Yellow / Infected Foliage Brown / Rust Orange on Leaf
+        is_foliage_yellow = (r > 100 and g > 90 and b < 100 and (r - g) < 35 and g > b)
+        is_foliage_brown = (r > 70 and g > 50 and b < 50 and r > b and g > b)
+        is_foliage_rust = (r > 130 and g > 60 and b < 50 and r > g)
+        
+        # Human Skin Tone Check (High Red, Moderate Green/Blue, r > g > b, (r-b) high)
+        is_skin = (r > 60 and g > 35 and b > 20 and r > g and g > b and (r - b) > 15 and (r - g) < 80)
+
+        if is_true_green:
+            green_px += 1
+            foliage_px += 1
+        elif is_foliage_yellow or is_foliage_brown or is_foliage_rust:
+            foliage_px += 1
+            
+        if is_skin:
+            skin_human_px += 1
+
+    green_ratio = green_px / max(1, total_px)
+    foliage_ratio = foliage_px / max(1, total_px)
+    skin_ratio = skin_human_px / max(1, total_px)
+
     clip_is_non_leaf = False
     clip_classifier = load_zero_shot_clip()
     if clip_classifier:
@@ -552,17 +569,24 @@ def analyze_leaf_bytes(image_b64: str, requested_crop: str = None) -> dict:
                 "building structure or room interior",
                 "text document or paper",
                 "electronic device screen",
+                "clothing or fabric",
                 "animal or pet"
             ])
-            if valid_check and valid_check[0]["label"] != "crop leaf or plant foliage photo" and valid_check[0]["score"] > 0.45:
+            if valid_check and valid_check[0]["label"] != "crop leaf or plant foliage photo" and valid_check[0]["score"] > 0.25:
                 clip_is_non_leaf = True
         except Exception as e_clip:
             print(f"CLIP non-leaf check warning: {e_clip}")
 
-    if plant_ratio < 0.08 or clip_is_non_leaf:
+    # Rejection rules:
+    # 1) If green foliage ratio < 8% and total foliage ratio < 22%
+    # 2) Or if human skin ratio > 25% and green ratio < 15%
+    # 3) Or if CLIP classified it as non-leaf with score > 0.25
+    is_invalid = (green_ratio < 0.08 and foliage_ratio < 0.22) or (skin_ratio > 0.25 and green_ratio < 0.15) or clip_is_non_leaf
+
+    if is_invalid:
         return {
             "is_valid_leaf": False,
-            "error_message": "Invalid Image: The uploaded photo does not appear to be a crop or plant leaf. Please upload a clear photo of an infected or healthy crop leaf.",
+            "error_message": "Invalid Image: The uploaded photo is not recognized as a crop leaf. Please upload a clear photo of a plant or crop leaf.",
             "crop": "Non-Plant / Invalid",
             "diagnosis": "Invalid Image",
             "pathogen_scientific": "N/A",
@@ -572,8 +596,8 @@ def analyze_leaf_bytes(image_b64: str, requested_crop: str = None) -> dict:
             "severity_level": "None",
             "severity": "Invalid Image (Non-Plant Photo)",
             "visual_findings": [
-                "Uploaded image does not match plant foliage / crop leaf features",
-                "Please upload a clear photo of a crop leaf to perform pathology scanning"
+                "Uploaded image does not exhibit plant foliage / crop leaf features.",
+                "Please upload a clear photo of a crop leaf to inspect for disease."
             ],
             "cultural_management": [],
             "organic_control": "N/A",
