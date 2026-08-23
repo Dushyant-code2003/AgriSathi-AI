@@ -18,7 +18,6 @@ from rag_engine import rag_engine
 from calculator import AgriCalculatorEngine, CalculatorRequest, CalculatorResponse, CROP_DATA, SOIL_MULTIPLIERS, UNIT_CONVERSION
 from mandi import MandiPriceEngine, MandiRecommendRequest, MandiRecommendResponse
 from disease_radar import DiseaseOutbreakRadarEngine, RadarPredictionRequest, RadarPredictionResponse
-from outreach import OutreachWebhookEngine, OutreachWebhookRequest, OutreachWebhookResponse
 from vision_engine import analyze_leaf_bytes
 
 app = FastAPI(
@@ -630,104 +629,7 @@ def predict_disease_outbreak(req: RadarPredictionRequest):
     """
     return DiseaseOutbreakRadarEngine.predict(req)
 
-# ─── WhatsApp & SMS Webhook Interface Endpoints ────────────────────────────────
 
-@app.post("/webhook/whatsapp", response_model=OutreachWebhookResponse)
-def whatsapp_farmer_webhook(req: OutreachWebhookRequest):
-    """
-    Twilio / Meta compatible WhatsApp Webhook endpoint for farmer advisories.
-    """
-    req.channel = "whatsapp"
-    return OutreachWebhookEngine.process_incoming(req)
-
-@app.post("/webhook/sms", response_model=OutreachWebhookResponse)
-def sms_farmer_webhook(req: OutreachWebhookRequest):
-    """
-    Feature phone SMS Webhook endpoint (<160 char text messages).
-    """
-    req.channel = "sms"
-    return OutreachWebhookEngine.process_incoming(req)
-
-
-@app.post("/webhook/twilio")
-async def twilio_whatsapp_webhook(From: str = Form("whatsapp:+919876543210"), Body: str = Form("Gehu mein pila rust aa raha hai, kya spray karein?")):
-    """
-    Production Twilio WhatsApp Webhook Endpoint.
-    Accepts x-www-form-urlencoded data sent by Twilio when a farmer texts a Twilio WhatsApp Number,
-    and returns valid TwiML XML so Twilio auto-delivers the advisory to the farmer's WhatsApp.
-    """
-    clean_from = From.replace("whatsapp:", "").strip()
-    twiml_xml = OutreachWebhookEngine.generate_twiml_response(clean_from, Body)
-    return Response(content=twiml_xml, media_type="application/xml")
-
-
-@app.get("/webhook/meta")
-def meta_whatsapp_verification(
-    mode: Optional[str] = Query(None, alias="hub.mode"),
-    token: Optional[str] = Query(None, alias="hub.verify_token"),
-    challenge: Optional[str] = Query(None, alias="hub.challenge")
-):
-    """
-    Meta WhatsApp Cloud API Webhook Verification Endpoint.
-    Responds to Meta Developer Console verification ping.
-    """
-    VERIFY_TOKEN = os.getenv("WHATSAPP_VERIFY_TOKEN", "AGRISATHI_VERIFY_TOKEN")
-    if mode == "subscribe" and token == VERIFY_TOKEN:
-        return PlainTextResponse(content=challenge, status_code=200)
-    raise HTTPException(status_code=403, detail="Verification failed")
-
-
-@app.post("/webhook/meta")
-async def meta_whatsapp_incoming(payload: dict):
-    """
-    Meta WhatsApp Cloud API Incoming Webhook Event Endpoint.
-    Parses JSON webhook events pushed by Meta Graph API and sends back AI farming advisory response.
-    """
-    try:
-        entry = payload.get("entry", [])[0]
-        changes = entry.get("changes", [])[0]
-        value = changes.get("value", {})
-        messages = value.get("messages", [])
-        if not messages:
-            return {"status": "ignored_non_message"}
-        
-        msg = messages[0]
-        from_num = msg.get("from", "919876543210")
-        if not from_num.startswith("+"):
-            from_num = "+" + from_num
-            
-        msg_body = msg.get("text", {}).get("body", "Help")
-
-        req = OutreachWebhookRequest(from_number=from_num, message_body=msg_body, channel="whatsapp")
-        res = OutreachWebhookEngine.process_incoming(req)
-
-        # Automatically send reply back to farmer via Meta Cloud API if Token and Phone Number ID are present
-        phone_number_id = value.get("metadata", {}).get("phone_number_id")
-        meta_token = os.getenv("META_WHATSAPP_TOKEN") or os.getenv("WHATSAPP_ACCESS_TOKEN")
-
-        if phone_number_id and meta_token:
-            import requests as _req
-            send_headers = {
-                "Authorization": f"Bearer {meta_token}",
-                "Content-Type": "application/json"
-            }
-            send_data = {
-                "messaging_product": "whatsapp",
-                "recipient_type": "individual",
-                "to": msg.get("from"),
-                "type": "text",
-                "text": {"preview_url": False, "body": res.whatsapp_formatted_body}
-            }
-            _req.post(
-                f"https://graph.facebook.com/v20.0/{phone_number_id}/messages",
-                headers=send_headers,
-                json=send_data,
-                timeout=10
-            )
-
-        return {"status": "success", "response": res}
-    except Exception as e:
-        return {"status": "error", "message": str(e)}
 
 
 

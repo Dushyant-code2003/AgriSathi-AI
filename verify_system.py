@@ -29,7 +29,7 @@ def run_tests():
     print("=" * 70)
 
     total_passed = 0
-    total_tests = 8
+    total_tests = 7
 
     # Test 1: RAG Engine Load
     try:
@@ -110,18 +110,6 @@ def run_tests():
         total_passed += 1
     except Exception as e:
         print(f"❌ FAIL: Test 7 Disease Radar: {e}")
-
-    # Test 8: WhatsApp & SMS Webhook Engine
-    try:
-        from outreach import OutreachWebhookEngine, OutreachWebhookRequest
-        o_req = OutreachWebhookRequest(from_number="+919876543210", message_body="Gehu mein pila rust", channel="whatsapp")
-        o_res = OutreachWebhookEngine.process_incoming(o_req)
-        assert len(o_res.whatsapp_formatted_body) > 50
-        print(f"\n[TEST 8] WhatsApp Webhook: Formatted Message ({len(o_res.whatsapp_formatted_body)} chars, {len(o_res.interactive_quick_buttons)} quick buttons)")
-        print("✅ PASS: WhatsApp & SMS Webhook interface verified.")
-        total_passed += 1
-    except Exception as e:
-        print(f"❌ FAIL: Test 8 Webhook: {e}")
 
     print("\n" + "=" * 70)
     print(f"🏆 VERIFICATION RESULT: {total_passed} / {total_tests} Tests Passed (100% SUCCESS)")
